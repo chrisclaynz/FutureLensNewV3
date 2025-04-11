@@ -1,4 +1,13 @@
 // Main application initialization
+const app = {
+    init() {
+        console.log('FutureLens application initialized');
+    }
+};
+
 document.addEventListener('DOMContentLoaded', () => {
-    console.log('FutureLens application initialized');
-}); 
+    app.init();
+});
+
+// Export the app object
+module.exports = { app }; 

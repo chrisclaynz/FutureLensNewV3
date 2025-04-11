@@ -18,4 +18,7 @@ const auth = {
 // Initialize auth module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     auth.init();
-}); 
+});
+
+// Export the auth object
+module.exports = { auth }; 

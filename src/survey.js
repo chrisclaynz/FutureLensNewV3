@@ -13,4 +13,7 @@ const survey = {
 // Initialize survey module when DOM is loaded
 document.addEventListener('DOMContentLoaded', () => {
     survey.init();
-}); 
+});
+
+// Export the survey object
+module.exports = { survey }; 
