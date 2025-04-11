@@ -1,38 +1,31 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Get environment variables
-const supabaseUrl = typeof import.meta !== 'undefined' 
-    ? import.meta.env.VITE_SUPABASE_URL 
-    : process.env.VITE_SUPABASE_URL;
-const supabaseKey = typeof import.meta !== 'undefined'
-    ? import.meta.env.VITE_SUPABASE_ANON_KEY
-    : process.env.VITE_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import supabase from './client.js';
 
 // Results module
 export const results = {
     async init() {
         console.log('Results module initialized');
-        await this.loadResults();
+        // We'll implement this in a future prompt
     },
 
     async loadResults() {
         try {
-            const participantId = localStorage.getItem('participant_id');
+            const participantId = localStorage.getItem('user_id');
             if (!participantId) {
                 window.location.href = '/';
                 return;
             }
 
-            const { data: responses, error } = await supabase
-                .from('responses')
-                .select('*')
-                .eq('participant_id', participantId);
+            // For now, we'll just log info instead of querying
+            console.log('Would load results for participant:', participantId);
+            
+            // Placeholder for result data
+            const mockResponses = [
+                { question_key: 'q1', likert_value: 2, dont_understand: false },
+                { question_key: 'q2', likert_value: -1, dont_understand: false },
+                { question_key: 'q3', likert_value: null, dont_understand: true }
+            ];
 
-            if (error) throw error;
-
-            this.displayResults(responses);
+            this.displayResults(mockResponses);
         } catch (error) {
             console.error('Error loading results:', error.message);
             alert('Error loading results. Please try again.');
@@ -58,10 +51,19 @@ export const results = {
     }
 };
 
-// Initialize results module when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    results.init();
-});
+// Initialize results module when DOM is loaded - but only if we're on the results page
+const isResultsPage = window.location.pathname.includes('results.html');
+
+if (isResultsPage) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            results.init();
+        });
+    } else {
+        // DOMContentLoaded has already fired
+        results.init();
+    }
+}
 
 // CommonJS export for testing
 if (typeof module !== 'undefined' && module.exports) {

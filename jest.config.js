@@ -1,9 +1,10 @@
 export default {
+    testEnvironment: 'jsdom',
     transform: {
-        '^.+\\.jsx?$': 'babel-jest',
+        '^.+\\.(js|jsx)$': 'babel-jest',
     },
-    testEnvironment: 'node',
-    transformIgnorePatterns: [
-        'node_modules/(?!(@supabase)/)',
-    ],
+    moduleNameMapper: {
+        '^@/(.*)$': '<rootDir>/src/$1',
+    },
+    setupFiles: ['./jest.setup.js'],
 }; 

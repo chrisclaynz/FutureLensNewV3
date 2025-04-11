@@ -1,58 +1,98 @@
-import { createClient } from '@supabase/supabase-js';
-
-// Get environment variables
-const supabaseUrl = typeof import.meta !== 'undefined' 
-    ? import.meta.env.VITE_SUPABASE_URL 
-    : process.env.VITE_SUPABASE_URL;
-const supabaseKey = typeof import.meta !== 'undefined'
-    ? import.meta.env.VITE_SUPABASE_ANON_KEY
-    : process.env.VITE_SUPABASE_ANON_KEY;
-
-const supabase = createClient(supabaseUrl, supabaseKey);
+import supabase from './client.js';
 
 // Authentication module
 export const auth = {
     init() {
-        const form = document.getElementById('loginForm');
-        if (form) {
-            form.addEventListener('submit', this.handleSubmit);
+        console.log('Auth module initialized');
+        const loginForm = document.getElementById('loginForm');
+        const signupForm = document.getElementById('signupForm');
+        
+        if (loginForm) {
+            loginForm.addEventListener('submit', (e) => this.handleLogin(e));
+        }
+        if (signupForm) {
+            signupForm.addEventListener('submit', (e) => this.handleSignup(e));
         }
     },
 
-    async handleSubmit(event) {
+    async handleLogin(event) {
         event.preventDefault();
-        const passcode = event.target.elements.passcode.value;
+        const email = event.target.elements.email.value;
+        const password = event.target.elements.password.value;
         
         try {
-            // Query Supabase to validate passcode
-            const { data, error } = await supabase
-                .from('participants')
-                .select('id')
-                .eq('passcode', passcode)
-                .single();
+            const { data, error } = await supabase.auth.signInWithPassword({
+                email,
+                password
+            });
 
             if (error) throw error;
 
-            if (data) {
-                // Store participant info
-                localStorage.setItem('participant_id', data.id);
-                localStorage.setItem('passcode', passcode);
+            if (data?.user) {
+                // Store session info
+                localStorage.setItem('user_id', data.user.id);
                 // Redirect to survey
                 window.location.href = '/survey.html';
-            } else {
-                alert('Invalid passcode');
             }
         } catch (error) {
             console.error('Login error:', error.message);
-            alert('Error during login. Please try again.');
+            this.showError('Invalid email or password');
+        }
+    },
+
+    async handleSignup(event) {
+        event.preventDefault();
+        const email = event.target.elements.email.value;
+        const password = event.target.elements.password.value;
+        
+        try {
+            const { data, error } = await supabase.auth.signUp({
+                email,
+                password
+            });
+
+            if (error) throw error;
+
+            if (data?.user) {
+                this.showSuccess('Account created successfully! Please check your email to verify your account.');
+            }
+        } catch (error) {
+            console.error('Signup error:', error.message);
+            this.showError('Error creating account. Please try again.');
+        }
+    },
+
+    showError(message) {
+        const errorDiv = document.getElementById('error-message');
+        if (errorDiv) {
+            errorDiv.textContent = message;
+            errorDiv.style.display = 'block';
+        }
+    },
+
+    showSuccess(message) {
+        const successDiv = document.getElementById('success-message');
+        if (successDiv) {
+            successDiv.textContent = message;
+            successDiv.style.display = 'block';
         }
     }
 };
 
-// Initialize auth module when DOM is loaded
-document.addEventListener('DOMContentLoaded', () => {
-    auth.init();
-});
+// Initialize auth module when DOM is loaded - but only if we're on the index page
+const isAuthPage = !window.location.pathname.includes('survey.html') && 
+                   !window.location.pathname.includes('results.html');
+
+if (isAuthPage) {
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            auth.init();
+        });
+    } else {
+        // DOMContentLoaded has already fired
+        auth.init();
+    }
+}
 
 // CommonJS export for testing
 if (typeof module !== 'undefined' && module.exports) {

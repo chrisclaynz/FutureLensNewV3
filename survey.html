@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FutureLens - Survey</title>
+    <link rel="stylesheet" href="css/styles.css">
+</head>
+<body>
+    <div id="root">
+        <div class="survey-container">
+            <h1>FutureLens Survey</h1>
+            
+            <div id="survey-content">
+                <div id="question-container">
+                    <h2 id="question">Question 1</h2>
+                    <p id="questionText">Loading question...</p>
+                    
+                    <div class="likert-container">
+                        <div id="likertScale" class="likert-scale">
+                            <div class="likert-option">
+                                <input type="radio" name="likert" id="likert-strong-disagree" value="-2">
+                                <label for="likert-strong-disagree">Strongly Disagree</label>
+                            </div>
+                            <div class="likert-option">
+                                <input type="radio" name="likert" id="likert-disagree" value="-1">
+                                <label for="likert-disagree">Disagree</label>
+                            </div>
+                            <div class="likert-option">
+                                <input type="radio" name="likert" id="likert-agree" value="1">
+                                <label for="likert-agree">Agree</label>
+                            </div>
+                            <div class="likert-option">
+                                <input type="radio" name="likert" id="likert-strong-agree" value="2">
+                                <label for="likert-strong-agree">Strongly Agree</label>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="dont-understand-container">
+                        <input type="checkbox" id="dontUnderstand">
+                        <label for="dontUnderstand">I Don't Understand</label>
+                    </div>
+                </div>
+                
+                <div class="navigation-buttons">
+                    <button id="prevButton" class="nav-button">Previous</button>
+                    <button id="nextButton" class="nav-button" disabled>Next</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load only the necessary scripts -->
+    <script type="module" src="src/client.js"></script>
+    <script type="module" src="src/app.js"></script>
+</body>
+</html> 

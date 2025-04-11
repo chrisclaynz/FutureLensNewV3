@@ -1,9 +1,18 @@
 {
-    "presets": ["@babel/preset-env"],
+    "presets": [
+        ["@babel/preset-env", {
+            "targets": {
+                "node": "current"
+            },
+            "modules": "commonjs"
+        }]
+    ],
     "plugins": [
-        ["transform-define", {
-            "import.meta.env.VITE_SUPABASE_URL": "process.env.VITE_SUPABASE_URL",
-            "import.meta.env.VITE_SUPABASE_ANON_KEY": "process.env.VITE_SUPABASE_ANON_KEY"
+        ["babel-plugin-transform-define", {
+            "process.env.VITE_SUPABASE_URL": "test-url",
+            "process.env.VITE_SUPABASE_ANON_KEY": "test-key",
+            "import.meta.env.VITE_SUPABASE_URL": "test-url",
+            "import.meta.env.VITE_SUPABASE_ANON_KEY": "test-key"
         }]
     ]
 } 
