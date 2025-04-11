@@ -1,7 +1,22 @@
-module.exports = {
+export default {
     testEnvironment: 'jsdom',
+    setupFiles: ['dotenv/config', '<rootDir>/test/setup.js'],
     moduleNameMapper: {
-        '\\.(css|less|scss|sass)$': 'identity-obj-proxy',
+        '^@/(.*)$': '<rootDir>/src/$1'
     },
-    setupFilesAfterEnv: ['<rootDir>/src/test/setup.js']
+    testMatch: ['**/test/**/*.test.js'],
+    transform: {
+        '^.+\\.js$': ['babel-jest', {
+            presets: [['@babel/preset-env', { targets: { node: 'current' } }]],
+            plugins: [
+                ['babel-plugin-transform-import-meta', {
+                    module: 'ES6'
+                }]
+            ]
+        }]
+    },
+    transformIgnorePatterns: [
+        'node_modules/(?!(@supabase/supabase-js)/)'
+    ],
+    moduleFileExtensions: ['js', 'json', 'node']
 }; 

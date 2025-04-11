@@ -1,3 +1,6 @@
+import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { results } from '../src/results.js';
+
 describe('Results Module', () => {
     let originalConsoleLog;
 
@@ -11,13 +14,11 @@ describe('Results Module', () => {
     });
 
     test('should initialize properly', () => {
-        const { results } = require('../results.js');
         results.init();
         expect(console.log).toHaveBeenCalledWith('Results module initialized');
     });
 
     test('should display results', () => {
-        const { results } = require('../results.js');
         results.displayResults();
         expect(console.log).toHaveBeenCalledWith('Displaying results');
     });

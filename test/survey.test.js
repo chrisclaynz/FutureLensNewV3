@@ -1,3 +1,6 @@
+import { jest, describe, test, expect, beforeEach, afterEach } from '@jest/globals';
+import { survey } from '../src/survey.js';
+
 describe('Survey Module', () => {
     let originalConsoleLog;
 
@@ -11,13 +14,11 @@ describe('Survey Module', () => {
     });
 
     test('should initialize properly', () => {
-        const { survey } = require('../survey.js');
         survey.init();
         expect(console.log).toHaveBeenCalledWith('Survey module initialized');
     });
 
     test('should display next question', () => {
-        const { survey } = require('../survey.js');
         survey.displayNextQuestion();
         expect(console.log).toHaveBeenCalledWith('Displaying next question');
     });
