@@ -52,16 +52,20 @@ CopyEdit
 
 sql  
 CopyEdit  
-`Please provide a Supabase SQL script (or a JavaScript migration file) that creates the following tables:`
+Please provide a Supabase SQL script (or a JavaScript migration file) that creates the following tables:
 
-`1. participants (id, passcode unique, cohort_id, survey_id, inserted_at)`  
-`2. responses (id, participant_id, question_key, likert_value, dont_understand, inserted_at)`  
-`3. surveys (id, json_config, inserted_at)`  
-`4. cohorts (id, code, label, inserted_at)`
+1. participants (id, user_id references auth.users (id) not null, cohort_id, survey_id, inserted_at)
+2. responses (id, participant_id references participants (id) not null, question_key, likert_value, dont_understand, inserted_at)
+3. surveys (id, json_config, inserted_at)
+4. cohorts (id, code, label, inserted_at)
 
-`Then enable Row-Level Security and create a policy for the "participants" and "responses" table so that a user can only select or insert rows if they match their authenticated user ID or passcode logic. Provide a mock policy if needed.`
+Then enable Row-Level Security and create a policy for the "participants" and "responses" table so that a user can only select or insert rows if they match their authenticated user ID. For instance:
+- A policy that compares participants.user_id with auth.uid()
+- A policy that compares responses.participant_id with participants.id where participants.user_id = auth.uid()
 
-`Next, give me an updated test script that runs these migrations and checks the tables exist.`
+Provide a mock policy snippet if needed.
+
+Next, give me an updated test script that runs these migrations and checks the tables exist and that RLS is enabled.
 
 ---
 
@@ -71,15 +75,17 @@ vbnet
 CopyEdit  
 `Now let's build basic passcode authentication for the MVP:`
 
-`1. In auth.js, create a function handleLogin(passcode) that:`  
-   `- Normalises the passcode (e.g. lower/upper).`  
-   `- Queries Supabase to validate it in the participants table.`  
-   `- On success, store the participant_id or passcode in localStorage or a global variable.`  
-   `- On failure, show an error message.`
+`1. In auth.js, create two functions:` 
+   `- signUpUser(email, password): uses supabase.auth.signUp({ email, password }) to register a new user.` 
+   `- signInUser(email, password): uses supabase.auth.signInWithPassword({ email, password }) to log in.` 
 
-`2. Update index.html to have a simple login form that calls handleLogin on submit.`  
-`3. Provide a Jest (or any) test that mocks a Supabase call and verifies handleLogin handles success/failure.`  
-`4. Return the updated index.html, auth.js, and test file.`
+
+`2. In index.html, add a simple form for email and password with a “Sign In” button. On submit, call signInUser. Optionally, provide a separate form or toggle for signUpUser if you want to allow user registration from the same page.`  
+`3. On successful sign-in, store the returned user session (e.g. access token) in localStorage or a global state variable. On failure, show an appropriate error message.`  
+`4. Provide a Jest (or any) test file that:`  
+`   - Mocks the Supabase client calls for signUp and signIn.`  
+ `  - Verifies success and failure cases (e.g. invalid credentials produce an error).`  
+`5. Return the updated index.html, auth.js, and test file(s) demonstrating these functions, making sure no passcode-based logic remains.` 
 
 ---
 

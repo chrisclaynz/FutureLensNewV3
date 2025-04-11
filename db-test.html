@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Database Test</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .test-section {
+            margin: 20px 0;
+            padding: 15px;
+            border: 1px solid #ccc;
+            border-radius: 5px;
+        }
+        .success {
+            color: green;
+        }
+        .error {
+            color: red;
+        }
+        button {
+            padding: 8px 16px;
+            margin: 5px;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
+    <h1>Database Test Page</h1>
+    
+    <div class="test-section">
+        <h2>Connection Test</h2>
+        <button onclick="testConnection()">Test Connection</button>
+        <div id="connection-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>Table Access Test</h2>
+        <button onclick="testTableAccess()">Test Table Access</button>
+        <div id="table-access-result"></div>
+    </div>
+
+    <div class="test-section">
+        <h2>RLS Test</h2>
+        <button onclick="testRLS()">Test RLS Policies</button>
+        <div id="rls-result"></div>
+    </div>
+
+    <script>
+        const supabaseUrl = 'https://noxrttgtvhtoiejujoyd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5veHJ0dGd0dmh0b2llanVqb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTM0NjAsImV4cCI6MjA1OTkyOTQ2MH0.fYAZdAQvWerLIR8OYajCMc8rM90g--GqR3stlHNk7Hk';
+        const supabase = window.supabase.createClient(supabaseUrl, supabaseKey);
+
+        async function testConnection() {
+            const resultDiv = document.getElementById('connection-result');
+            try {
+                const { data, error } = await supabase.from('surveys').select('id').limit(1);
+                if (error) throw error;
+                resultDiv.innerHTML = '<p class="success">✅ Connection successful!</p>';
+            } catch (error) {
+                resultDiv.innerHTML = `<p class="error">❌ Connection failed: ${error.message}</p>`;
+            }
+        }
+
+        async function testTableAccess() {
+            const resultDiv = document.getElementById('table-access-result');
+            resultDiv.innerHTML = '<p>Testing table access...</p>';
+            
+            const tables = ['surveys', 'cohorts', 'participants', 'responses'];
+            let results = '';
+            
+            for (const table of tables) {
+                try {
+                    const { error } = await supabase.from(table).select('id').limit(1);
+                    if (error) throw error;
+                    results += `<p class="success">✅ ${table} table accessible</p>`;
+                } catch (error) {
+                    results += `<p class="error">❌ ${table} table error: ${error.message}</p>`;
+                }
+            }
+            
+            resultDiv.innerHTML = results;
+        }
+
+        async function testRLS() {
+            const resultDiv = document.getElementById('rls-result');
+            resultDiv.innerHTML = '<p>Testing RLS policies...</p>';
+            
+            try {
+                // Test participants table RLS
+                const { error: participantsError } = await supabase
+                    .from('participants')
+                    .select('*');
+                
+                if (participantsError?.message.includes('permission denied')) {
+                    resultDiv.innerHTML += '<p class="success">✅ Participants RLS working (blocked unauthorized access)</p>';
+                } else {
+                    resultDiv.innerHTML += `<p class="error">❌ Participants RLS failed: ${participantsError?.message || 'No error'}</p>`;
+                }
+
+                // Test responses table RLS
+                const { error: responsesError } = await supabase
+                    .from('responses')
+                    .select('*');
+                
+                if (responsesError?.message.includes('permission denied')) {
+                    resultDiv.innerHTML += '<p class="success">✅ Responses RLS working (blocked unauthorized access)</p>';
+                } else {
+                    resultDiv.innerHTML += `<p class="error">❌ Responses RLS failed: ${responsesError?.message || 'No error'}</p>`;
+                }
+            } catch (error) {
+                resultDiv.innerHTML += `<p class="error">❌ RLS test error: ${error.message}</p>`;
+            }
+        }
+    </script>
+</body>
+</html> 

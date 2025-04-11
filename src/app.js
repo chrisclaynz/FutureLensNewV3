@@ -1,28 +1,52 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseUrl, supabaseKey } from './config.js';
+import { createSurvey } from './survey.js';
 
-// Get environment variables
-const supabaseUrl = typeof import.meta !== 'undefined' 
-    ? import.meta.env.VITE_SUPABASE_URL 
-    : process.env.VITE_SUPABASE_URL;
-const supabaseKey = typeof import.meta !== 'undefined'
-    ? import.meta.env.VITE_SUPABASE_ANON_KEY
-    : process.env.VITE_SUPABASE_ANON_KEY;
+export function createApp(dependencies = {}) {
+    const {
+        supabase = createClient(supabaseUrl, supabaseKey),
+        window: win = window,
+        document: doc = document,
+        storage = localStorage
+    } = dependencies;
 
-// Initialize Supabase client with environment variables
-const supabase = createClient(supabaseUrl, supabaseKey);
+    let survey;
 
-// Main application initialization
-export const app = {
-    init() {
-        console.log('FutureLens application initialized');
+    async function init() {
+        // Initialize survey with dependencies
+        survey = createSurvey({
+            supabase,
+            storage,
+            window: win
+        });
+
+        // Set up event listeners
+        doc.addEventListener('DOMContentLoaded', handleDOMContentLoaded);
     }
-};
 
-document.addEventListener('DOMContentLoaded', () => {
-    app.init();
-});
+    async function handleDOMContentLoaded() {
+        try {
+            const { data: { session }, error } = await supabase.auth.getSession();
+            
+            if (error) throw error;
+            
+            if (!session) {
+                win.location.href = '/login.html';
+                return;
+            }
 
-// CommonJS export for testing
-if (typeof module !== 'undefined' && module.exports) {
-    module.exports = { app };
-} 
+            // Initialize survey
+            await survey.init();
+        } catch (error) {
+            console.error('Error initializing app:', error);
+            win.location.href = '/login.html';
+        }
+    }
+
+    return {
+        init
+    };
+}
+
+// Create default app instance
+export const app = createApp(); 

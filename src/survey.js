@@ -1,212 +1,187 @@
 import { createClient } from '@supabase/supabase-js';
+import { supabaseUrl, supabaseKey } from './config.js';
 
-// Get Supabase environment variables
-const supabaseUrl = import.meta ? import.meta.env.VITE_SUPABASE_URL : process.env.VITE_SUPABASE_URL;
-const supabaseKey = import.meta ? import.meta.env.VITE_SUPABASE_ANON_KEY : process.env.VITE_SUPABASE_ANON_KEY;
+export function createSurvey(dependencies = {}) {
+    const {
+        supabase,
+        storage,
+        window: win = window
+    } = dependencies;
 
-export const survey = {
-    questions: [],
-    currentIndex: 0,
+    let currentQuestion = 1;
+    let totalQuestions = 0;
+    let questions = [];
+    let participantId = null;
 
-    async init() {
-        console.log('Survey initialized');
-        this.loadSurvey();
-    },
-
-    async loadSurvey() {
-        try {
-            const participantId = localStorage.getItem('participant_id');
-            if (!participantId) {
-                window.location.href = '/';
-                return;
-            }
-
-            const { data: participant, error: participantError } = await supabase
-                .from('participants')
-                .select('survey_id')
-                .eq('id', participantId)
-                .single();
-
-            if (participantError) throw participantError;
-
-            const { data: survey, error: surveyError } = await supabase
-                .from('surveys')
-                .select('json_config')
-                .eq('id', participant.survey_id)
-                .single();
-
-            if (surveyError) throw surveyError;
-
-            this.questions = this.shuffleQuestions(survey.json_config.questions);
-            localStorage.setItem('questionOrder', JSON.stringify(this.questions.map(q => q.id)));
-            
-            this.displayNextQuestion();
-        } catch (error) {
-            console.error('Error loading survey:', error.message);
-            alert('Error loading survey. Please try again.');
-        }
-    },
-
-    shuffleQuestions(questions) {
-        const required = questions.filter(q => q.required);
-        const optional = questions.filter(q => !q.required);
-        
-        // Fisher-Yates shuffle for both arrays
-        for (let i = required.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [required[i], required[j]] = [required[j], required[i]];
-        }
-        for (let i = optional.length - 1; i > 0; i--) {
-            const j = Math.floor(Math.random() * (i + 1));
-            [optional[i], optional[j]] = [optional[j], optional[i]];
-        }
-
-        return [...required, ...optional];
-    },
-
-    displayNextQuestion() {
-        console.log('Displaying next question');
-        if (this.currentIndex >= this.questions.length) {
-            this.showSubmitButton();
+    async function init() {
+        // Get participant ID from storage
+        participantId = storage.getItem('participant_id');
+        if (!participantId) {
+            console.error('No participant ID found');
             return;
         }
 
-        const question = this.questions[this.currentIndex];
-        const container = document.getElementById('questionContainer');
-        if (!container) return;
+        // Load survey data
+        const { data: participant, error: participantError } = await supabase
+            .from('participants')
+            .select('survey_id')
+            .eq('id', participantId)
+            .single();
 
-        container.innerHTML = this.generateQuestionHTML(question);
-        this.attachQuestionListeners();
-    },
+        if (participantError) {
+            console.error('Error loading participant:', participantError);
+            return;
+        }
 
-    generateQuestionHTML(question) {
-        return `
-            <div class="question" data-id="${question.id}">
-                <h3>${question.text}</h3>
-                <div class="likert-scale">
-                    <label><input type="radio" name="likert" value="-2"> Strongly Disagree (-2)</label>
-                    <label><input type="radio" name="likert" value="-1"> Disagree (-1)</label>
-                    <label><input type="radio" name="likert" value="1"> Agree (+1)</label>
-                    <label><input type="radio" name="likert" value="2"> Strongly Agree (+2)</label>
-                </div>
-                <div class="dont-understand">
-                    <label>
-                        <input type="checkbox" name="dontUnderstand">
-                        I Don't Understand
-                    </label>
-                </div>
-                <button id="nextButton" disabled>Next</button>
-            </div>
-        `;
-    },
+        const { data: survey, error: surveyError } = await supabase
+            .from('surveys')
+            .select('json_config')
+            .eq('id', participant.survey_id)
+            .single();
 
-    attachQuestionListeners() {
-        const nextButton = document.getElementById('nextButton');
-        const likertInputs = document.querySelectorAll('input[name="likert"]');
-        const dontUnderstand = document.querySelector('input[name="dontUnderstand"]');
+        if (surveyError) {
+            console.error('Error loading survey:', surveyError);
+            return;
+        }
 
-        const updateButtonState = () => {
-            const hasAnswer = [...likertInputs].some(input => input.checked) || dontUnderstand.checked;
-            nextButton.disabled = !hasAnswer;
-        };
+        // Initialize questions
+        questions = survey.json_config.questions;
+        totalQuestions = questions.length;
 
-        likertInputs.forEach(input => {
-            input.addEventListener('change', () => {
-                if (input.checked) dontUnderstand.checked = false;
-                updateButtonState();
+        // Load saved progress if any
+        const savedProgress = storage.getItem('surveyProgress');
+        if (savedProgress) {
+            currentQuestion = parseInt(savedProgress, 10);
+        }
+
+        // Initialize UI
+        updateQuestionDisplay();
+        setupEventListeners();
+    }
+
+    function updateQuestionDisplay() {
+        const questionElement = win.document.getElementById('question');
+        const questionTextElement = win.document.getElementById('questionText');
+        const likertScale = win.document.getElementById('likertScale');
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+
+        if (questionElement) {
+            questionElement.textContent = `Question ${currentQuestion} of ${totalQuestions}`;
+        }
+
+        if (questionTextElement) {
+            questionTextElement.textContent = questions[currentQuestion - 1].text;
+        }
+
+        if (likertScale) {
+            // Reset previous selections
+            likertScale.querySelectorAll('input').forEach(input => {
+                input.checked = false;
             });
-        });
-
-        dontUnderstand.addEventListener('change', () => {
-            if (dontUnderstand.checked) {
-                likertInputs.forEach(input => input.checked = false);
-            }
-            updateButtonState();
-        });
-
-        nextButton.addEventListener('click', () => {
-            this.saveAnswer();
-            this.currentIndex++;
-            this.displayNextQuestion();
-        });
-    },
-
-    saveAnswer() {
-        const questionId = document.querySelector('.question').dataset.id;
-        const likertValue = document.querySelector('input[name="likert"]:checked')?.value;
-        const dontUnderstand = document.querySelector('input[name="dontUnderstand"]').checked;
-
-        const answer = {
-            questionId,
-            likertValue: likertValue ? parseInt(likertValue) : null,
-            dontUnderstand
-        };
-
-        const answers = JSON.parse(localStorage.getItem('answers') || '[]');
-        answers.push(answer);
-        localStorage.setItem('answers', JSON.stringify(answers));
-    },
-
-    showSubmitButton() {
-        const container = document.getElementById('questionContainer');
-        if (!container) return;
-
-        container.innerHTML = `
-            <div class="submit-section">
-                <h3>Survey Complete</h3>
-                <p>You have answered all questions. Click submit to finish.</p>
-                <button id="submitButton">Submit</button>
-            </div>
-        `;
-
-        document.getElementById('submitButton').addEventListener('click', this.submitSurvey.bind(this));
-    },
-
-    async submitSurvey() {
-        if (!navigator.onLine) {
-            alert('No internet connection. Please reconnect and try again.');
-            return;
         }
 
-        try {
-            const answers = JSON.parse(localStorage.getItem('answers') || '[]');
-            const participantId = localStorage.getItem('participant_id');
-
-            const { error } = await supabase.from('responses').insert(
-                answers.map(answer => ({
-                    participant_id: participantId,
-                    question_key: answer.questionId,
-                    likert_value: answer.likertValue,
-                    dont_understand: answer.dontUnderstand
-                }))
-            );
-
-            if (error) throw error;
-
-            // Clear local storage and redirect to results
-            localStorage.removeItem('answers');
-            window.location.href = '/results.html';
-        } catch (error) {
-            console.error('Error submitting survey:', error.message);
-            alert('Error submitting survey. Please try again.');
-        }
-    },
-
-    async submitResponse(response) {
-        const supabase = createClient(supabaseUrl, supabaseKey);
-        try {
-            const { data, error } = await supabase
-                .from('responses')
-                .insert([response]);
-            
-            if (error) throw error;
-            return data;
-        } catch (error) {
-            console.error('Error submitting response:', error);
-            throw error;
+        if (dontUnderstand) {
+            dontUnderstand.checked = false;
         }
     }
-};
+
+    function setupEventListeners() {
+        const nextButton = win.document.getElementById('nextButton');
+        const prevButton = win.document.getElementById('prevButton');
+        const likertScale = win.document.getElementById('likertScale');
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+
+        if (nextButton) {
+            nextButton.addEventListener('click', handleNext);
+        }
+        if (prevButton) {
+            prevButton.addEventListener('click', handlePrev);
+        }
+        if (likertScale) {
+            likertScale.addEventListener('change', updateNextButtonState);
+        }
+        if (dontUnderstand) {
+            dontUnderstand.addEventListener('change', updateNextButtonState);
+        }
+    }
+
+    function updateNextButtonState() {
+        const nextButton = win.document.getElementById('nextButton');
+        const likertScale = win.document.getElementById('likertScale');
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+
+        if (nextButton) {
+            const hasAnswer = (likertScale && likertScale.querySelector('input:checked')) || 
+                            (dontUnderstand && dontUnderstand.checked);
+            nextButton.disabled = !hasAnswer;
+        }
+    }
+
+    async function handleNext() {
+        if (currentQuestion < totalQuestions) {
+            await saveCurrentAnswer();
+            currentQuestion++;
+            storage.setItem('surveyProgress', currentQuestion);
+            updateQuestionDisplay();
+            updateNextButtonState();
+        } else {
+            await finalSubmission();
+        }
+    }
+
+    async function handlePrev() {
+        if (currentQuestion > 1) {
+            await saveCurrentAnswer();
+            currentQuestion--;
+            storage.setItem('surveyProgress', currentQuestion);
+            updateQuestionDisplay();
+            updateNextButtonState();
+        }
+    }
+
+    async function saveCurrentAnswer() {
+        const likertScale = win.document.getElementById('likertScale');
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+        const currentQuestionData = questions[currentQuestion - 1];
+
+        const likertValue = likertScale ? likertScale.querySelector('input:checked')?.value : null;
+        const dontUnderstandValue = dontUnderstand ? dontUnderstand.checked : false;
+
+        const { error } = await supabase
+            .from('responses')
+            .upsert({
+                participant_id: participantId,
+                question_key: currentQuestionData.id,
+                likert_value: likertValue ? parseInt(likertValue) : null,
+                dont_understand: dontUnderstandValue
+            });
+
+        if (error) {
+            console.error('Error saving answer:', error);
+        }
+    }
+
+    async function finalSubmission() {
+        await saveCurrentAnswer();
+        
+        // Clear progress
+        storage.removeItem('surveyProgress');
+        
+        // Redirect to results page
+        if (win.location) {
+            win.location.href = '/results';
+        }
+    }
+
+    return {
+        init,
+        handleNext,
+        handlePrev
+    };
+}
+
+// Default export for production use
+export const survey = createSurvey();
 
 // CommonJS export for testing
 if (typeof module !== 'undefined' && module.exports) {
