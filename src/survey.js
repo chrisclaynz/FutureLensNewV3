@@ -211,8 +211,8 @@ export function createSurvey(dependencies = {}) {
         // For optional questions
         else {
             // Configure Next button as "Answer Another"
-            if (nextButton) {
-                nextButton.disabled = true;
+        if (nextButton) {
+            nextButton.disabled = true;
                 nextButton.textContent = "Answer Another";
                 nextButton.classList.add('option-button');
             }
@@ -406,17 +406,17 @@ export function createSurvey(dependencies = {}) {
             } else {
                 // Final completion - either all done or optional questions done
                 console.log('Showing final completion screen');
-                surveyContent.innerHTML = `
-                    <div class="completion-screen">
-                        <h2>Survey Completed</h2>
-                        <p>Thank you for completing the survey!</p>
+            surveyContent.innerHTML = `
+                <div class="completion-screen">
+                    <h2>Survey Completed</h2>
+                    <p>Thank you for completing the survey!</p>
                         <button id="submitSurveyButton" class="primary-button">View Results</button>
-                    </div>
-                `;
-                
-                const submitButton = win.document.getElementById('submitSurveyButton');
-                if (submitButton) {
-                    submitButton.addEventListener('click', finalSubmission);
+                </div>
+            `;
+            
+            const submitButton = win.document.getElementById('submitSurveyButton');
+            if (submitButton) {
+                submitButton.addEventListener('click', finalSubmission);
                 }
             }
         }
@@ -777,9 +777,9 @@ export function createSurvey(dependencies = {}) {
             if (!currentQuestion) return;
             
             // Get Likert and "Don't Understand" values
-            const likertScale = win.document.getElementById('likertScale');
-            const dontUnderstand = win.document.getElementById('dontUnderstand');
-            
+        const likertScale = win.document.getElementById('likertScale');
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+
             const likertValue = likertScale ? parseInt(likertScale.querySelector('input:checked')?.value) : null;
             const dontUnderstandValue = dontUnderstand ? dontUnderstand.checked : false;
             
@@ -791,8 +791,8 @@ export function createSurvey(dependencies = {}) {
             if (!participantId) {
                 console.error('No participant ID found');
                 return;
-            }
-            
+    }
+
             // Submit this single optional answer to Supabase
             const { error } = await supabaseClient
                 .from('responses')
@@ -825,9 +825,9 @@ export function createSurvey(dependencies = {}) {
             if (!optionalQuestionsJson) {
                 console.error('No optional questions found in storage');
                 showCompletionScreen();
-                return;
-            }
-            
+            return;
+        }
+        
             // Load optional questions
             const optionalQuestions = JSON.parse(optionalQuestionsJson);
             console.log(`Parsed ${optionalQuestions.length} optional questions`);
@@ -901,8 +901,8 @@ export function createSurvey(dependencies = {}) {
                 `;
                 
                 // Re-setup event listeners since we replaced the DOM elements
-                setupEventListeners();
-                
+        setupEventListeners();
+        
                 // Make sure the "Go to Results" button is enabled
                 const goToResultsButton = win.document.getElementById('goToResultsButton');
                 if (goToResultsButton) {
@@ -912,7 +912,7 @@ export function createSurvey(dependencies = {}) {
             
             // Display the first optional question
             console.log('Displaying first optional question');
-            displayNextQuestion();
+        displayNextQuestion();
             
             // Final check to ensure the "Go to Results" button is enabled
             const goToResultsButton = win.document.getElementById('goToResultsButton');
