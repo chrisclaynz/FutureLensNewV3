@@ -1,10 +1,18 @@
 export default {
-    testEnvironment: 'jsdom',
     transform: {
-        '^.+\\.(js|jsx)$': 'babel-jest',
+        "^.+\\.[t|j]sx?$": "babel-jest"
     },
+    transformIgnorePatterns: [
+        "node_modules/(?!(uuid)/)"
+    ],
     moduleNameMapper: {
-        '^@/(.*)$': '<rootDir>/src/$1',
+        // Mock CSS imports
+        "\\.(css|less|scss|sass)$": "identity-obj-proxy",
+        // Handle import.meta
+        "^(\\.{1,2}/.*)\\.js$": "$1"
     },
-    setupFiles: ['./jest.setup.js'],
+    // Handle .js files as ESM
+    extensionsToTreatAsEsm: ['.js'],
+    testEnvironment: 'jsdom',
+    setupFiles: ['./jest.setup.js']
 }; 

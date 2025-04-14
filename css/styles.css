@@ -227,6 +227,9 @@ html, body {
     margin-top: 15px;
     height: auto;
     min-height: 55px;
+    /* Support for 3 buttons */
+    flex-wrap: wrap;
+    gap: 10px;
 }
 
 .nav-button {
@@ -843,29 +846,129 @@ button:disabled {
     }
     
     .navigation-buttons {
-        padding: 3px 15px;
-        height: 40px;
-    }
-
-    #nextButton {
-        background-color: #4a90e2;
-        order: 2;
+        display: flex;
+        flex-direction: row;
+        flex-wrap: nowrap;
+        justify-content: space-between;
+        gap: 5px;
+        padding: 8px 10px;
+        width: 100%;
+        max-width: 100%;
     }
     
-    #prevButton {
-        background-color: #f1f1f1;
-        color: #333;
-        border: 1px solid #ddd;
+    .nav-button {
+        min-width: 0;
+        flex: 1;
+        padding: 5px 8px;
+        font-size: 13px;
+        text-align: center;
+        white-space: nowrap;
+    }
+    
+    /* Adjust button sizes for optional questions mode */
+    #nextButton.option-button {
+        flex: 1;
         order: 1;
     }
-
-    .navigation-buttons {
-        flex-direction: row;
-        gap: 10px;
-        justify-content: space-between;
+    
+    #goToResultsButton {
+        flex: 1;
+        order: 2;
+        margin-left: 5px !important;
+    }
+    
+    /* For required questions with prev/next */
+    #prevButton {
+        flex: 0.8;
+        order: 1;
+    }
+    
+    #nextButton:not(.option-button) {
+        flex: 1.2;
+        order: 2;
     }
 
     .dont-understand-container {
         margin-bottom: 0;
     }
+}
+
+/* For very small screens */
+@media (max-width: 340px) {
+    .navigation-buttons {
+        padding: 8px 5px;
+    }
+    
+    .nav-button {
+        padding: 5px 5px;
+        font-size: 12px;
+    }
+}
+
+.submit-button {
+}
+
+.completion-screen {
+    text-align: center;
+    padding: 20px;
+    margin-top: 30px;
+}
+
+.completion-screen h2 {
+    font-size: 24px;
+    color: #4a90e2;
+    margin-bottom: 15px;
+}
+
+.completion-screen p {
+    font-size: 16px;
+    margin-bottom: 20px;
+    color: #555;
+}
+
+.button-group {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin-top: 25px;
+}
+
+.primary-button {
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 8px;
+    padding: 12px 20px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.primary-button:hover {
+    background-color: #357ebd;
+    transform: translateY(-1px);
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.option-button {
+    background-color: #5cb85c !important;
+    color: white !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.option-button:hover:not(:disabled) {
+    background-color: #449d44 !important;
+}
+
+.results-button {
+    background-color: #dc3545 !important;
+    color: white !important;
+    font-weight: 500 !important;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+    margin-left: 10px !important;
+}
+
+.results-button:hover:not(:disabled) {
+    background-color: #c82333 !important;
 } 

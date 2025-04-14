@@ -1,4 +1,7 @@
-{
+import { supabase } from './client.js';
+
+// The updated survey definition with required/optional questions
+const updatedSurveyJson = {
   "theme": {
     "title": "FutureLens - Understanding the perspectives on yourself and others when we think about the future.",
     "description": "This survey explores various perspectives about the future and the policies and actions humans might take.",
@@ -189,4 +192,29 @@
       }
     }
   }
+};
+
+// Function to insert the survey into Supabase
+async function insertSurvey() {
+  try {
+    console.log('Inserting updated survey with required/optional questions into Supabase...');
+    
+    const { data, error } = await supabase
+      .from('surveys')
+      .insert({
+        json_config: updatedSurveyJson
+      });
+      
+    if (error) {
+      console.error('Error inserting survey:', error);
+      return;
+    }
+    
+    console.log('Survey inserted successfully!');
+  } catch (error) {
+    console.error('Unexpected error:', error);
+  }
 }
+
+// Execute the insert function
+insertSurvey(); 

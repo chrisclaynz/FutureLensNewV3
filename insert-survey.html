@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Insert Updated Survey to Supabase</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        
+        h1 {
+            color: #4a90e2;
+        }
+        
+        .info {
+            background-color: #f1f8ff;
+            border-left: 4px solid #4a90e2;
+            padding: 10px 15px;
+            margin-bottom: 20px;
+        }
+        
+        .output {
+            background-color: #f5f5f5;
+            border: 1px solid #ccc;
+            padding: 10px;
+            border-radius: 4px;
+            white-space: pre-wrap;
+            min-height: 200px;
+            margin-top: 20px;
+        }
+        
+        button {
+            background-color: #4a90e2;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+        }
+        
+        button:hover {
+            background-color: #357ebd;
+        }
+    </style>
+</head>
+<body>
+    <h1>Insert Updated Survey to Supabase</h1>
+    
+    <div class="info">
+        <p>This page will insert the updated survey with required/optional questions into the Supabase database.</p>
+        <p>The survey contains:</p>
+        <ul>
+            <li>9 required questions (marked with required: true)</li>
+            <li>7 optional questions (marked with required: false)</li>
+        </ul>
+    </div>
+    
+    <button id="insertButton">Insert Survey</button>
+    
+    <div class="output" id="output">Results will appear here...</div>
+    
+    <script>
+        // Redirect console output to the output div
+        const outputDiv = document.getElementById('output');
+        const originalConsoleLog = console.log;
+        const originalConsoleError = console.error;
+        
+        console.log = function(...args) {
+            originalConsoleLog.apply(console, args);
+            outputDiv.textContent += args.join(' ') + '\n';
+        };
+        
+        console.error = function(...args) {
+            originalConsoleError.apply(console, args);
+            outputDiv.textContent += 'ERROR: ' + args.join(' ') + '\n';
+        };
+        
+        // Handle insert button click
+        document.getElementById('insertButton').addEventListener('click', function() {
+            outputDiv.textContent = ''; // Clear previous output
+            console.log('Starting insert process...');
+            
+            // Load and execute the insert script
+            const script = document.createElement('script');
+            script.type = 'module';
+            script.src = './src/insert-survey.js';
+            document.body.appendChild(script);
+        });
+    </script>
+</body>
+</html> 

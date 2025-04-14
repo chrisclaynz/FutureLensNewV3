@@ -1,5 +1,3 @@
-import { jest } from '@jest/globals';
-
 // Mock localStorage
 const localStorageMock = {
   getItem: jest.fn(),
@@ -41,15 +39,4 @@ document.getElementById = jest.fn(() => ({
 }));
 
 // Mock import.meta
-globalThis.import = { meta: { env: { VITE_SUPABASE_URL: 'test-url', VITE_SUPABASE_ANON_KEY: 'test-key' } } };
-
-// Mock any globals that might be needed
-Object.defineProperty(window, 'localStorage', {
-  value: {
-    getItem: jest.fn(),
-    setItem: jest.fn(),
-    removeItem: jest.fn(),
-    clear: jest.fn(),
-  },
-  writable: true
-}); 
+globalThis.import = { meta: { env: { VITE_SUPABASE_URL: 'test-url', VITE_SUPABASE_ANON_KEY: 'test-key' } } }; 
