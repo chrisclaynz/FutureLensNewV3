@@ -217,6 +217,69 @@ describe('Survey', () => {
         });
     });
 
+    test('should save multiple answers and submit successfully when online', async () => {
+        // Mock navigator.onLine to be true
+        Object.defineProperty(global.navigator, 'onLine', { get: () => true, configurable: true });
+        
+        // Setup multiple answers in storage
+        const mockAnswers = [
+            { question_key: 'q1', likert_value: 2, dont_understand: false },
+            { question_key: 'q2', likert_value: -1, dont_understand: true },
+            { question_key: 'q3', likert_value: 1, dont_understand: false }
+        ];
+        
+        // Mock localStorage to return our test data
+        mockStorage.getItem.mockImplementation((key) => {
+            if (key === 'surveyAnswers') return JSON.stringify(mockAnswers);
+            if (key === 'participant_id') return 'test-user-id';
+            if (key === 'futurelens_participant_id') return 'test-participant-id';
+            return null;
+        });
+        
+        // Mock successful Supabase operations
+        mockSupabase.insert.mockResolvedValue({ data: { id: 1 }, error: null });
+        
+        // Call finalSubmission
+        await survey.finalSubmission();
+        
+        // Verify Supabase was called for each answer
+        expect(mockSupabase.from).toHaveBeenCalledWith('responses');
+        expect(mockSupabase.insert).toHaveBeenCalledTimes(3);
+        
+        // Verify storage was cleared
+        expect(mockStorage.removeItem).toHaveBeenCalledWith('surveyAnswers');
+        expect(mockStorage.removeItem).toHaveBeenCalledWith('questionOrder');
+        expect(mockStorage.removeItem).toHaveBeenCalledWith('currentQuestionIndex');
+        expect(mockStorage.removeItem).toHaveBeenCalledWith('currentSurvey');
+        
+        // Verify success message and redirection
+        expect(mockWindow.alert).toHaveBeenCalledWith('Survey submitted successfully!');
+        expect(mockWindow.location.href).toBe('/results.html');
+    });
+    
+    test('should show error message when submitting offline', async () => {
+        // Mock navigator.onLine to be false
+        Object.defineProperty(global.navigator, 'onLine', { get: () => false, configurable: true });
+        
+        // Setup answers in storage
+        mockStorage.getItem.mockReturnValueOnce(JSON.stringify([
+            { question_key: 'q1', likert_value: 2, dont_understand: false }
+        ]));
+        
+        // Call finalSubmission
+        await survey.finalSubmission();
+        
+        // Verify error message was shown
+        expect(mockWindow.alert).toHaveBeenCalledWith('No internet connection. Please reconnect and try again.');
+        
+        // Verify Supabase was NOT called
+        expect(mockSupabase.from).not.toHaveBeenCalledWith('responses');
+        expect(mockSupabase.insert).not.toHaveBeenCalled();
+        
+        // Verify storage was NOT cleared
+        expect(mockStorage.removeItem).not.toHaveBeenCalledWith('surveyAnswers');
+    });
+
     test('should handle initialization with existing survey', async () => {
         mockStorage.getItem.mockImplementation((key) => {
             if (key === 'participant_id') return 'test-participant-id';

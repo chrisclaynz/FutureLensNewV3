@@ -359,7 +359,7 @@ export function createSurvey(dependencies = {}) {
                 storage.setItem('futurelens_participant_id', participantId);
             }
             
-            // Submit all answers to Supabase
+            // Submit all answers to Supabase in one batch operation
             const promises = answers.map(answer => {
                 return supabaseClient
                     .from('responses')
@@ -486,6 +486,7 @@ export function createSurvey(dependencies = {}) {
         initSurvey,
         displayNextQuestion,
         recordAnswer,
+        showCompletionScreen,
         handleNext,
         handlePrev,
         finalSubmission
