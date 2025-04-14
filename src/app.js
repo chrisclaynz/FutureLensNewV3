@@ -1,4 +1,4 @@
-import supabase from './client.js';
+import { supabase } from './client.js';
 
 // Only import survey if we're on the survey page
 const isSurveyPage = window.location.pathname.includes('survey.html');
@@ -47,12 +47,21 @@ export function createApp(dependencies = {}) {
                 return;
             } else if (session && isAuthPage) {
                 // If logged in and on auth page, redirect to survey
+                // Store user ID in localStorage for the survey
+                if (session.user) {
+                    storage.setItem('participant_id', session.user.id);
+                }
                 win.location.href = '/survey.html';
                 return;
             }
             
             // Initialize survey if on survey page
             if (isSurveyPage && session && createSurvey) {
+                // Store user ID in localStorage for the survey if not already there
+                if (session.user && !storage.getItem('participant_id')) {
+                    storage.setItem('participant_id', session.user.id);
+                }
+                
                 survey = createSurvey({
                     supabase: supabaseClient,
                     storage,

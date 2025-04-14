@@ -1,0 +1,176 @@
+{
+  "theme": {
+    "title": "FutureLens - Understanding the perspectives on yourself and others when we think about the future.",
+    "description": "This survey explores various perspectives about the future and the policies and actions humans might take.",
+    "instructions": "Select how much you agree or disagree with each statement.",
+    "startButtonText": "Start Survey",
+    "nextButtonText": "Next",
+    "backButtonText": "Back",
+    "continuumSelectionText": "Select a Continuum to View Your Results",
+    "colors": {
+      "primary": "#007acc",
+      "background": "#f9f9f9",
+      "button": "#007acc",
+      "text": "#333"
+    },
+    "buttonLabels": {
+      "stronglyDisagree": "Strongly Disagree",
+      "disagree": "Disagree",
+      "agree": "Agree",
+      "stronglyAgree": "Strongly Agree"
+    },
+    "resultMessages": {
+      "positive": "You lean towards {right_label}.",
+      "negative": "You lean towards {left_label}.",
+      "neutral": "You have a balanced perspective between {left_label} and {right_label}."
+    }
+  },
+  "statements": [
+    {
+      "id": "rules_1",
+      "text": "The government should set rules and laws to make sure that social media sites are not used to spread fake news and misinformation.",
+      "alignment": "left",
+      "continuum": "rulesvsfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "rules_2",
+      "text": "The government should ensure we have enough police to catch criminals and also use tough punishments to encourage them to stop breaking the law.",
+      "alignment": "left",
+      "continuum": "rulesvsfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "rules_3",
+      "text": "The government should be able to monitor phone calls and our online activities if they think it will keep people safe.",
+      "alignment": "left",
+      "continuum": "rulesvsfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "rules_4",
+      "text": "All drugs should be legalised, as the government should not dictate what individuals put into their own bodies.",
+      "alignment": "right",
+      "continuum": "rulesvsfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "planet_1",
+      "text": "The government should increase spending on public transportation.",
+      "alignment": "right",
+      "continuum": "humancentredvsplanetcentred",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "planet_2",
+      "text": "We should find ways to encourage people to eat more plants and less meat in order to reduce our impact on the environment.",
+      "alignment": "right",
+      "continuum": "humancentredvsplanetcentred",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "planet_3",
+      "text": "Investments in health care and education are more important than dealing with climate change.",
+      "alignment": "left",
+      "continuum": "humancentredvsplanetcentred",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "planet_4",
+      "text": "The government should create rules and laws to look after the environment, even if they are likely to impact people's jobs and the health of our economy.",
+      "alignment": "right",
+      "continuum": "humancentredvsplanetcentred",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "planet_5",
+      "text": "We should invest in technology that will solve the environmental problems humans have caused rather than changing how we behave (the things we eat, the clothes we wear, the way we travel, etc).",
+      "alignment": "left",
+      "continuum": "humancentredvsplanetcentred",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "equity_1",
+      "text": "The government should create laws to ensure wages are high enough to allow people to live a happy and healthy life.",
+      "alignment": "left",
+      "continuum": "legislatedequityvseconomicfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "equity_2",
+      "text": "Governments should tax those who possess the most wealth to provide high-quality education, healthcare, and housing for those with less wealth.",
+      "alignment": "left",
+      "continuum": "legislatedequityvseconomicfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "equity_3",
+      "text": "The government should only provide a basic standard to healthcare and education. Those who want higher quality services should be prepared to earn the extra money to pay for it.",
+      "alignment": "right",
+      "continuum": "legislatedequityvseconomicfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "equity_4",
+      "text": "Companies should choose all their employees based on abilities and skills. Gender, ethnicity or disabilities should not be considered.",
+      "alignment": "right",
+      "continuum": "legislatedequityvseconomicfreedom",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "tech_1",
+      "text": "The government should stop companies developing artificial intelligence too quickly so that we can make sure it's safe and will not cause more problems than it solves.",
+      "alignment": "right",
+      "continuum": "techoptimismvstechpessimism",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "tech_2",
+      "text": "Encouraging lab-grown food technology can be a sustainable solution to ensure everyone has access to affordable food.",
+      "alignment": "left",
+      "continuum": "techoptimismvstechpessimism",
+      "hasDontUnderstand": true
+    },
+    {
+      "id": "tech_3",
+      "text": "The government can promote the use of self-driving cars to reduce traffic and improve road safety.",
+      "alignment": "left",
+      "continuum": "techoptimismvstechpessimism",
+      "hasDontUnderstand": true
+    }
+  ],
+  "continua": {
+    "rulesvsfreedom": {
+      "name": "Rules vs Freedom",
+      "description": "This continuum explores how much you value rules versus personal freedom.",
+      "labels": {
+        "left": "Rules",
+        "right": "Freedom"
+      }
+    },
+    "humancentredvsplanetcentred": {
+      "name": "Human-Centred vs Planet-Centred",
+      "description": "This continuum examines how much priority should be given to environmental sustainability over human-focused needs.",
+      "labels": {
+        "left": "Human-Centred",
+        "right": "Planet-Centred"
+      }
+    },
+    "legislatedequityvseconomicfreedom": {
+      "name": "Legislated Equity vs Economic Freedom",
+      "description": "This continuum explores the balance between government intervention and free market principles.",
+      "labels": {
+        "left": "Economic Freedom",
+        "right": "Legislated Equity"
+      }
+    },
+    "techoptimismvstechpessimism": {
+      "name": "Tech Optimism vs Tech Pessimism",
+      "description": "This continuum explores attitudes towards technology's role in solving global challenges.",
+      "labels": {
+        "left": "Tech-Optimism",
+        "right": "Tech-Pessimism"
+      }
+    }
+  }
+}

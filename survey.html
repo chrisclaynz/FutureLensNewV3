@@ -2,9 +2,210 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>FutureLens - Survey</title>
     <link rel="stylesheet" href="css/styles.css">
+    <style>
+        /* Fix for mobile browser viewport height issues */
+        html, body {
+            min-height: 100%;
+            height: auto;
+            margin: 0;
+            padding: 0;
+            overflow-y: auto;
+            overflow-x: hidden;
+        }
+        
+        #root {
+            height: 100%;
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
+            padding: 0 10px;
+        }
+        
+        /* Make the Next button more prominent */
+        #nextButton {
+            background-color: #4a90e2;
+        }
+        
+        #prevButton {
+            background-color: #f1f1f1;
+            color: #333;
+            border: 1px solid #ddd;
+        }
+        
+        /* Compact layout for the checkbox - EXTREME space reduction */
+        .dont-understand-container {
+            display: flex;
+            align-items: center;
+            flex-wrap: wrap;
+            margin: 0;
+            padding: 5px;
+            line-height: 1.3;
+            height: auto;
+            margin-bottom: 0 !important;
+            min-height: 0;
+            margin-top: 5px;
+        }
+        
+        .dont-understand-container label {
+            margin-bottom: 0;
+            font-size: 14px;
+            line-height: 1.3;
+        }
+        
+        .dont-understand-container .note {
+            padding-left: 23px;
+            margin-top: 1px;
+            font-size: 11px;
+            line-height: 1.2;
+            margin-bottom: 0;
+        }
+        
+        /* Make sure question content has enough space without scrolling */
+        .question-content {
+            min-height: 160px !important;
+            height: auto !important;
+            max-height: none !important;
+            overflow: visible !important;
+            margin-bottom: 5px !important;
+            padding-bottom: 5px !important;
+            flex-shrink: 0 !important;
+        }
+        
+        /* Adjust options container to avoid scrolling */
+        .options-container {
+            overflow: visible !important;
+            padding-bottom: 105px !important; /* More room for buttons */
+            display: flex !important;
+            flex-direction: column !important;
+        }
+        
+        /* Survey container should adapt to content */
+        .survey-container {
+            min-height: 100% !important;
+            height: auto !important;
+            overflow: visible !important;
+        }
+        
+        /* Root container should show everything */
+        #root {
+            overflow: visible !important;
+            height: auto !important;
+            min-height: 100% !important;
+        }
+        
+        /* Ensure question text doesn't require scrolling */
+        #questionText {
+            padding-bottom: 20px !important;
+            font-size: 26px !important;
+            line-height: 1.4 !important;
+            font-weight: 600 !important;
+            color: #222 !important;
+            letter-spacing: -0.3px !important;
+            overflow: visible !important;
+        }
+        
+        /* Add a positioning wrapper for natural content flow */
+        .navigation-wrapper {
+            position: relative !important;
+            height: auto !important;
+            width: 100% !important;
+            margin-top: 10px !important;
+        }
+        
+        /* Force button position */
+        .navigation-buttons {
+            border-top: none !important;
+            position: relative !important;
+            width: 100% !important;
+            margin: 0 !important;
+            margin-top: 15px !important;
+            padding: 10px 30px !important;
+            height: auto !important;
+            min-height: 55px !important;
+            z-index: 100 !important;
+            background-color: #fff !important;
+        }
+        
+        .likert-container {
+            margin-bottom: 0 !important;
+            padding-bottom: 0 !important;
+        }
+        
+        .likert-scale {
+            margin-bottom: 2px !important;
+        }
+        
+        .likert-option {
+            min-height: 36px !important;
+            margin-bottom: 2px !important;
+            padding-top: 5px !important;
+            padding-bottom: 5px !important;
+        }
+        
+        .likert-option:last-child {
+            margin-bottom: 10px !important;
+        }
+        
+        /* Increase space between question text and Likert options */
+        .instructions {
+            margin-top: 20px !important; /* Increased from 5px to create 15px more space */
+            margin-bottom: 5px !important;
+        }
+        
+        /* Mobile-specific styles */
+        @media (max-width: 480px) {
+            .survey-container {
+                padding: 0 !important;
+                height: 100vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
+            /* Top section for question */
+            .question-content {
+                min-height: 35vh !important;
+                padding: 10px 15px 10px !important;
+                flex: 0 0 auto !important;
+                border-bottom: 1px solid #ddd !important;
+            }
+            
+            /* Smaller question text on mobile */
+            #questionText {
+                font-size: 20px !important;
+                line-height: 1.3 !important;
+                padding-bottom: 8px !important;
+            }
+            
+            /* Bottom section for options and buttons */
+            .options-container {
+                padding: 0 15px 15px !important;
+                background-color: #f7f7f7 !important;
+                border-top: 1px solid #ddd !important;
+                border-radius: 20px 20px 0 0 !important;
+                flex: 1 1 auto !important;
+                min-height: 55vh !important;
+                display: flex !important;
+                flex-direction: column !important;
+            }
+            
+            /* Navigation buttons at the very bottom */
+            .navigation-wrapper {
+                margin-top: auto !important;
+                padding-top: 10px !important;
+            }
+            
+            .navigation-buttons {
+                background-color: transparent !important;
+            }
+            
+            /* Fix for body */
+            body {
+                overflow: hidden !important;
+            }
+        }
+    </style>
 </head>
 <body>
     <div id="root">
@@ -13,46 +214,104 @@
             
             <div id="survey-content">
                 <div id="question-container">
-                    <h2 id="question">Question 1</h2>
-                    <p id="questionText">Loading question...</p>
+                    <div class="question-content">
+                        <h2 id="question">Question 1</h2>
+                        <div id="questionText">Loading question...</div>
+                    </div>
                     
-                    <div class="likert-container">
-                        <div id="likertScale" class="likert-scale">
-                            <div class="likert-option">
-                                <input type="radio" name="likert" id="likert-strong-disagree" value="-2">
-                                <label for="likert-strong-disagree">Strongly Disagree</label>
+                    <div class="options-container">
+                        <div class="likert-container">
+                            <p class="instructions">Please select one of the options below:</p>
+                            <div id="likertScale" class="likert-scale">
+                                <div class="likert-option">
+                                    <input type="radio" name="likert" id="likert-strong-disagree" value="-2">
+                                    <label for="likert-strong-disagree">Strongly Disagree</label>
+                                </div>
+                                <div class="likert-option">
+                                    <input type="radio" name="likert" id="likert-disagree" value="-1">
+                                    <label for="likert-disagree">Disagree</label>
+                                </div>
+                                <div class="likert-option">
+                                    <input type="radio" name="likert" id="likert-agree" value="1">
+                                    <label for="likert-agree">Agree</label>
+                                </div>
+                                <div class="likert-option">
+                                    <input type="radio" name="likert" id="likert-strong-agree" value="2">
+                                    <label for="likert-strong-agree">Strongly Agree</label>
+                                </div>
                             </div>
-                            <div class="likert-option">
-                                <input type="radio" name="likert" id="likert-disagree" value="-1">
-                                <label for="likert-disagree">Disagree</label>
+                        
+                            <div class="dont-understand-container">
+                                <input type="checkbox" id="dontUnderstand">
+                                <label for="dontUnderstand">I Don't Understand</label>
+                                <p class="note"><small>Note: You must still select one of the options above to continue.</small></p>
                             </div>
-                            <div class="likert-option">
-                                <input type="radio" name="likert" id="likert-agree" value="1">
-                                <label for="likert-agree">Agree</label>
-                            </div>
-                            <div class="likert-option">
-                                <input type="radio" name="likert" id="likert-strong-agree" value="2">
-                                <label for="likert-strong-agree">Strongly Agree</label>
+                            
+                            <!-- Add wrapper for precise positioning -->
+                            <div class="navigation-wrapper">
+                                <div class="navigation-buttons">
+                                    <button id="prevButton" class="nav-button">Previous</button>
+                                    <button id="nextButton" class="nav-button" disabled>Next</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                    
-                    <div class="dont-understand-container">
-                        <input type="checkbox" id="dontUnderstand">
-                        <label for="dontUnderstand">I Don't Understand</label>
-                    </div>
-                </div>
-                
-                <div class="navigation-buttons">
-                    <button id="prevButton" class="nav-button">Previous</button>
-                    <button id="nextButton" class="nav-button" disabled>Next</button>
                 </div>
             </div>
         </div>
     </div>
 
-    <!-- Load only the necessary scripts -->
-    <script type="module" src="src/client.js"></script>
-    <script type="module" src="src/app.js"></script>
+    <!-- Load the scripts in the correct order -->
+    <script type="module">
+        // Only import what we need once, in the correct order
+        import { supabase } from './src/client.js';
+        import { createSurvey } from './src/survey.js';
+        import { auth } from './src/auth.js';
+        
+        // Fix viewport height issues on mobile
+        function setVH() {
+            let vh = window.innerHeight * 0.01;
+            document.documentElement.style.setProperty('--vh', `${vh}px`);
+            
+            // Make body unscrollable so our container handles all scrolling
+            document.body.style.overflow = 'hidden';
+        }
+        
+        // Set the height initially and on resize
+        setVH();
+        window.addEventListener('resize', () => {
+            // Only update on actual resize events, not when virtual keyboard appears
+            setTimeout(setVH, 100);
+        });
+        
+        document.addEventListener('DOMContentLoaded', async () => {
+            // Check if user is logged in
+            const userId = localStorage.getItem('participant_id');
+            if (!userId) {
+                // Redirect to login if not authenticated
+                window.location.href = '/';
+                return;
+            }
+            
+            // Initialize and start the survey
+            const survey = createSurvey({ supabase });
+            await survey.init();
+            
+            // Make the entire likert option clickable
+            document.querySelectorAll('.likert-option').forEach(option => {
+                option.addEventListener('click', function(e) {
+                    // Don't trigger if clicking directly on the radio input
+                    if (e.target.type !== 'radio') {
+                        const radio = this.querySelector('input[type="radio"]');
+                        if (radio) {
+                            radio.checked = true;
+                            // Trigger change event to update Next button state
+                            radio.dispatchEvent(new Event('change', { bubbles: true }));
+                        }
+                    }
+                });
+            });
+        });
+    </script>
 </body>
 </html> 

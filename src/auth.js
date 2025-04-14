@@ -1,4 +1,4 @@
-import supabase from './client.js';
+import { supabase } from './client.js';
 
 // Authentication module
 export const auth = {
@@ -30,7 +30,7 @@ export const auth = {
 
             if (data?.user) {
                 // Store session info
-                localStorage.setItem('user_id', data.user.id);
+                localStorage.setItem('participant_id', data.user.id);
                 // Redirect to survey
                 window.location.href = '/survey.html';
             }
