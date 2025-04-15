@@ -97,6 +97,9 @@ export function createSurvey(dependencies = {}) {
         console.log('Required questions: ', requiredQuestions.length);
         console.log('Optional questions: ', optionalQuestions.length);
         
+        // Store the total number of required questions for the progress bar
+        storage.setItem('totalRequiredQuestions', requiredQuestions.length.toString());
+        
         // Randomly shuffle each group separately
         const shuffledRequired = shuffleArray([...requiredQuestions]);
         const shuffledOptional = shuffleArray([...optionalQuestions]);
@@ -191,10 +194,44 @@ export function createSurvey(dependencies = {}) {
         // Determine if we're in the optional questions section
         const isOptionalSection = !question.required && checkAllRequiredQuestionsAnswered();
         
+        // Calculate progress for required questions
+        let progressHtml = '';
+        if (question.required === true) {
+            // Count how many required questions we've answered so far
+            let currentRequiredQuestionNumber = 0;
+            for (let i = 0; i <= currentQuestionIndex; i++) {
+                if (questions[i].required === true) {
+                    currentRequiredQuestionNumber++;
+                }
+            }
+            
+            // Get total required questions
+            const totalRequiredQuestions = parseInt(storage.getItem('totalRequiredQuestions') || '0');
+            
+            // Calculate progress percentage
+            const progressPercentage = Math.round((currentRequiredQuestionNumber / totalRequiredQuestions) * 100);
+            
+            console.log('Progress bar calculation:', {
+                currentRequired: currentRequiredQuestionNumber,
+                totalRequired: totalRequiredQuestions,
+                percentage: progressPercentage
+            });
+            
+            // Create progress bar HTML
+            progressHtml = `
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${progressPercentage}%;"></div>
+                </div>
+            `;
+        } else {
+            // For optional questions, show traditional question counter
+            progressHtml = `<h2 id="question">Question ${currentQuestionIndex + 1} of ${questions.length}</h2>`;
+        }
+        
         // Create HTML structure with appropriate buttons
         let questionsHTML = `
             <div class="question-content">
-                <h2 id="question">Question ${currentQuestionIndex + 1} of ${questions.length}</h2>
+                ${progressHtml}
                 <div id="questionText">${question.text}</div>
             </div>
             
