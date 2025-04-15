@@ -101,8 +101,8 @@ export const auth = {
             localStorage.setItem('cohort_id', cohort.id);
             localStorage.setItem('survey_id', cohort.survey_id);
             
-            // Redirect to the survey page
-            window.location.href = '/survey.html';
+            // Redirect to the welcome page instead of the survey page
+            window.location.href = '/survey-welcome.html';
         } catch (error) {
             console.error('Survey code error:', error.message);
             this.showError('Error validating survey code. Please try again.');

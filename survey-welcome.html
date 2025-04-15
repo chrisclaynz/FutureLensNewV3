@@ -1,0 +1,215 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>FutureLens - Welcome</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <style>
+        .welcome-container {
+            max-width: 800px;
+            margin: 30px auto;
+            padding: 30px;
+            background-color: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+        }
+        
+        .welcome-container h1 {
+            text-align: center;
+            margin-bottom: 20px;
+            color: #4a90e2;
+        }
+        
+        .welcome-container h2 {
+            margin-top: 25px;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .welcome-container p {
+            margin-bottom: 15px;
+            line-height: 1.6;
+        }
+        
+        .instruction-section {
+            margin-top: 20px;
+            margin-bottom: 30px;
+            padding: 20px;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+        
+        .instruction-section h3 {
+            margin-top: 0;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        .instruction-item {
+            margin-bottom: 15px;
+            display: flex;
+            align-items: flex-start;
+        }
+        
+        .instruction-number {
+            background-color: #4a90e2;
+            color: white;
+            width: 25px;
+            height: 25px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+            flex-shrink: 0;
+        }
+        
+        .instruction-text {
+            flex: 1;
+        }
+        
+        .begin-button {
+            display: block;
+            width: 200px;
+            margin: 30px auto;
+            padding: 12px 20px;
+            background-color: #4a90e2;
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            text-align: center;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            transition: background-color 0.3s;
+        }
+        
+        .begin-button:hover {
+            background-color: #357abd;
+        }
+        
+        /* Mobile styles */
+        @media (max-width: 768px) {
+            .welcome-container {
+                margin: 15px auto;
+                padding: 20px;
+                width: 90%;
+            }
+            
+            .begin-button {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div id="root">
+        <div class="welcome-container">
+            <h1>Welcome to FutureLens</h1>
+            
+            <div id="survey-welcome-content">
+                <div id="survey-title">Loading survey...</div>
+                
+                <div class="instruction-section">
+                    <h3>How to Complete This Survey</h3>
+                    
+                    <div class="instruction-item">
+                        <div class="instruction-number">1</div>
+                        <div class="instruction-text">
+                            You'll be presented with a series of statements. For each statement, select how much you agree or disagree.
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-item">
+                        <div class="instruction-number">2</div>
+                        <div class="instruction-text">
+                            Use the <strong>Strongly Disagree</strong>, <strong>Disagree</strong>, <strong>Agree</strong>, or <strong>Strongly Agree</strong> options to indicate your level of agreement.
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-item">
+                        <div class="instruction-number">3</div>
+                        <div class="instruction-text">
+                            If you don't understand a statement, you can check the "I Don't Understand" box, but you'll still need to select an agreement option to continue.
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-item">
+                        <div class="instruction-number">4</div>
+                        <div class="instruction-text">
+                            Some questions are required to complete the survey, while others are optional. You'll be informed when you've completed all required questions.
+                        </div>
+                    </div>
+                    
+                    <div class="instruction-item">
+                        <div class="instruction-number">5</div>
+                        <div class="instruction-text">
+                            At the end of the survey, you'll see your results and how they compare to others in your group.
+                        </div>
+                    </div>
+                </div>
+                
+                <p>Ready to begin? Click the button below to start the survey.</p>
+                
+                <button id="begin-survey-button" class="begin-button">Begin Survey</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Load the necessary scripts -->
+    <script type="module" src="src/client.js"></script>
+    <script type="module">
+        import { supabase } from './src/client.js';
+        
+        document.addEventListener('DOMContentLoaded', async function() {
+            try {
+                // Check if user is authenticated
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                if (sessionError || !session) {
+                    window.location.href = '/';
+                    return;
+                }
+                
+                // Get survey ID from localStorage
+                const surveyId = localStorage.getItem('survey_id');
+                if (!surveyId) {
+                    window.location.href = '/survey-code.html';
+                    return;
+                }
+                
+                // Fetch survey details to display the title
+                const { data: survey, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('json_config')
+                    .eq('id', surveyId)
+                    .single();
+                
+                if (surveyError) {
+                    console.error('Error fetching survey:', surveyError);
+                    return;
+                }
+                
+                // Display survey title and instructions
+                if (survey && survey.json_config && survey.json_config.theme) {
+                    const titleElement = document.getElementById('survey-title');
+                    titleElement.innerHTML = `
+                        <h2>${survey.json_config.theme.title || 'FutureLens Survey'}</h2>
+                        <p>${survey.json_config.theme.instructions || 'This survey will help you understand your thinking patterns and preferences.'}</p>
+                    `;
+                }
+                
+                // Add event listener to begin button
+                const beginButton = document.getElementById('begin-survey-button');
+                beginButton.addEventListener('click', function() {
+                    // Set flag that user has visited the welcome page
+                    localStorage.setItem('visited_welcome_page', 'true');
+                    window.location.href = '/survey.html';
+                });
+            } catch (error) {
+                console.error('Error initializing welcome page:', error);
+            }
+        });
+    </script>
+</body>
+</html> 

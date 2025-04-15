@@ -795,6 +795,14 @@ export function createSurvey(dependencies = {}) {
             return;
         }
         
+        // Check if the user has gone through the welcome page
+        const hasVisitedWelcome = storage.getItem('visited_welcome_page');
+        if (!hasVisitedWelcome) {
+            console.log('User has not visited the welcome page, redirecting...');
+            win.location.href = '/survey-welcome.html';
+            return;
+        }
+        
         // Check if we have a saved survey in progress
         const savedIndex = storage.getItem('currentQuestionIndex');
         const savedSurvey = storage.getItem('currentSurvey');

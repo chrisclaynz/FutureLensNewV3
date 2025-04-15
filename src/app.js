@@ -35,6 +35,7 @@ export function createApp(dependencies = {}) {
             const isAuthPage = win.location.pathname.includes('index.html') || 
                                win.location.pathname === '/';
             const isSurveyCodePage = win.location.pathname.includes('survey-code.html');
+            const isWelcomePage = win.location.pathname.includes('survey-welcome.html');
             const isResultsPage = win.location.pathname.includes('results.html');
             
             // Get the current session
@@ -57,9 +58,8 @@ export function createApp(dependencies = {}) {
                 return;
             }
             
-            // If logged in and on survey code page, no need to redirect
-            // If logged in and on survey page, and has survey_id, no need to redirect
-            if (session && isSurveyPage) {
+            // If logged in and on survey welcome or survey page, check for survey_id
+            if (session && (isSurveyPage || isWelcomePage)) {
                 const hasSurveyId = storage.getItem('survey_id');
                 
                 if (!hasSurveyId) {
