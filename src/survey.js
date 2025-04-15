@@ -266,7 +266,7 @@ export function createSurvey(dependencies = {}) {
                 <div class="button-container">
                     ${isOptionalSection ? '' : currentQuestionIndex > 0 ? '<button id="prevButton" class="secondary-button">Previous</button>' : ''}
                     ${isOptionalSection ? '<button id="goToResultsButton" class="secondary-button">Go to Results Page</button>' : ''}
-                    <button id="nextButton" class="primary-button" disabled>Next</button>
+                    <button id="nextButton" class="primary-button" disabled>${isAtLastRequiredQuestion() && question.required ? 'SUBMIT' : 'Next'}</button>
                 </div>
             </div>
         `;
@@ -429,15 +429,24 @@ export function createSurvey(dependencies = {}) {
     }
     
     function isAtLastRequiredQuestion() {
+        // If we're at the last question overall, return true
         if (currentQuestionIndex >= questions.length - 1) return true;
         
-        // Check if all questions after this one are optional
+        // If the current question is not required, this isn't relevant
+        if (!isCurrentQuestionRequired()) return false;
+
+        // Count how many more required questions exist after this one
+        let moreRequiredQuestions = 0;
         for (let i = currentQuestionIndex + 1; i < questions.length; i++) {
             if (questions[i].required === true) {
-                return false;
+                moreRequiredQuestions++;
             }
         }
-        return true;
+        
+        console.log(`isAtLastRequiredQuestion check: ${moreRequiredQuestions} more required questions after this one`);
+        
+        // If there are no more required questions after this one, it's the last required question
+        return moreRequiredQuestions === 0;
     }
     
     function showCompletionScreen() {
