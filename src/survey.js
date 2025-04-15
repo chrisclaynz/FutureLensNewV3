@@ -276,6 +276,29 @@ export function createSurvey(dependencies = {}) {
         // Set up event listeners
         setupEventListeners(isOptionalSection);
         
+        // Add listener to the button container for better click detection
+        const buttonContainer = win.document.querySelector('.button-container');
+        if (buttonContainer) {
+            buttonContainer.addEventListener('click', function(e) {
+                // Only process if the click wasn't directly on a button
+                const isButton = e.target.tagName === 'BUTTON';
+                if (!isButton) {
+                    const dontUnderstand = win.document.getElementById('dontUnderstand');
+                    const likertScale = win.document.getElementById('likertScale');
+                    const nextButton = win.document.getElementById('nextButton');
+                    
+                    // If "I don't understand" is checked but no Likert option selected and they clicked in button area
+                    if (dontUnderstand && dontUnderstand.checked && nextButton && nextButton.disabled) {
+                        const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
+                        if (!hasLikertAnswer) {
+                            console.log('Container click detected - showing reminder');
+                            showDontUnderstandReminder();
+                        }
+                    }
+                }
+            });
+        }
+        
         // Optionally load any previously stored answer for this question
         loadSavedAnswer(question.id);
         
@@ -689,8 +712,30 @@ export function createSurvey(dependencies = {}) {
         const dontUnderstand = win.document.getElementById('dontUnderstand');
 
         if (nextButton) {
-            nextButton.addEventListener('click', handleNext);
+            // Add special handling for disabled button clicks when "I don't understand" is checked
+            nextButton.addEventListener('click', function(e) {
+                // Check if button is disabled and "I don't understand" is checked
+                if (nextButton.disabled && dontUnderstand && dontUnderstand.checked) {
+                    // Log that we're intercepting a disabled button click
+                    console.log('Intercepted click on disabled Next button with "I don\'t understand" checked');
+                    
+                    // Check if a Likert option is selected
+                    const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
+                    if (!hasLikertAnswer) {
+                        console.log('Showing reminder because of disabled button click');
+                        showDontUnderstandReminder();
+                        e.preventDefault();
+                        return;
+                    }
+                }
+                
+                // If button is not disabled or the above condition isn't met, proceed normally
+                if (!nextButton.disabled) {
+                    handleNext();
+                }
+            });
         }
+        
         if (prevButton) {
             prevButton.addEventListener('click', handlePrev);
         }
@@ -701,7 +746,25 @@ export function createSurvey(dependencies = {}) {
             likertScale.addEventListener('change', updateNextButtonState);
         }
         if (dontUnderstand) {
-            dontUnderstand.addEventListener('change', updateNextButtonState);
+            dontUnderstand.addEventListener('change', function() {
+                updateNextButtonState();
+                
+                // If the checkbox was just checked and no likert option is selected,
+                // we should show the reminder immediately to proactively guide the user
+                if (dontUnderstand.checked) {
+                    const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
+                    
+                    // Only show if no Likert option is selected - the user might check
+                    // "I don't understand" after they've already selected a Likert option,
+                    // in which case we don't need to remind them
+                    if (!hasLikertAnswer) {
+                        console.log('Showing reminder after checkbox checked with no Likert selection');
+                        setTimeout(function() {
+                            showDontUnderstandReminder();
+                        }, 500); // Small delay so they see the checkbox state change first
+                    }
+                }
+            });
         }
     }
 
@@ -718,10 +781,15 @@ export function createSurvey(dependencies = {}) {
     }
 
     function showDontUnderstandReminder() {
+        console.log('showDontUnderstandReminder called');
+        
         // Check if a reminder already exists (to prevent duplicates)
         if (win.document.getElementById('dont-understand-reminder')) {
+            console.log('Reminder already exists, not creating another');
             return;
         }
+        
+        console.log('Creating reminder element');
         
         // Create reminder element
         const reminderElement = win.document.createElement('div');
@@ -738,24 +806,40 @@ export function createSurvey(dependencies = {}) {
         
         // Append to body
         win.document.body.appendChild(reminderElement);
+        console.log('Reminder added to DOM');
         
         // Add event listener to close button
         const closeButton = win.document.getElementById('reminder-close-btn');
         if (closeButton) {
             closeButton.addEventListener('click', function() {
+                console.log('Closing reminder');
                 reminderElement.remove();
             });
+        } else {
+            console.error('Could not find close button');
         }
     }
 
     async function handleNext() {
+        // Add debug logging to troubleshoot reminder not showing
+        console.log('handleNext called');
+        
         // Check if "I don't understand" is checked but no Likert option selected
         const dontUnderstand = win.document.getElementById('dontUnderstand');
         const likertScale = win.document.getElementById('likertScale');
         
+        console.log('checkbox state:', {
+            dontUnderstandExists: !!dontUnderstand,
+            dontUnderstandChecked: dontUnderstand ? dontUnderstand.checked : false,
+            likertScaleExists: !!likertScale,
+            hasLikertSelection: likertScale ? !!likertScale.querySelector('input:checked') : false
+        });
+        
         if (dontUnderstand && dontUnderstand.checked) {
             const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
+            console.log('Should show reminder?', !hasLikertAnswer);
             if (!hasLikertAnswer) {
+                console.log('Showing reminder...');
                 showDontUnderstandReminder();
                 return; // Don't proceed until they select a Likert option
             }
