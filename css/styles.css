@@ -951,6 +951,26 @@ button:disabled {
     cursor: not-allowed;
 }
 
+.submit-button {
+    padding: 10px 20px;
+    background-color: #e74c3c;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+    font-weight: bold;
+}
+
+.submit-button:hover {
+    background-color: #c0392b;
+}
+
+.submit-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
 .secondary-button {
     padding: 10px 20px;
     background-color: #f5f5f5;
