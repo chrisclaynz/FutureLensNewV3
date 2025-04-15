@@ -701,17 +701,7 @@ export function createSurvey(dependencies = {}) {
             likertScale.addEventListener('change', updateNextButtonState);
         }
         if (dontUnderstand) {
-            dontUnderstand.addEventListener('change', function() {
-                updateNextButtonState();
-                
-                // Show reminder message if "I don't understand" is checked but no Likert option selected
-                if (dontUnderstand.checked) {
-                    const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
-                    if (!hasLikertAnswer) {
-                        showDontUnderstandReminder();
-                    }
-                }
-            });
+            dontUnderstand.addEventListener('change', updateNextButtonState);
         }
     }
 
@@ -739,8 +729,9 @@ export function createSurvey(dependencies = {}) {
         reminderElement.className = 'reminder-message';
         reminderElement.innerHTML = `
             <div class="reminder-content">
-                <h3>Reminder</h3>
-                <p>Checking this box suggests you don't understand the question. However, you still need to select an option. We often have to vote without fully understanding all the ideas and policies involved. Please choose the option you think suits your perspective best from what you do understand.</p>
+                <h3>Please Select an Option</h3>
+                <p>You've indicated that you don't understand this question. That's okay! However, you still need to select one of the agreement options above to continue.</p>
+                <p>We often have to vote without fully understanding all the ideas and policies involved. Please choose the option you think suits your perspective best from what you do understand.</p>
                 <button id="reminder-close-btn">Got it</button>
             </div>
         `;
@@ -758,6 +749,18 @@ export function createSurvey(dependencies = {}) {
     }
 
     async function handleNext() {
+        // Check if "I don't understand" is checked but no Likert option selected
+        const dontUnderstand = win.document.getElementById('dontUnderstand');
+        const likertScale = win.document.getElementById('likertScale');
+        
+        if (dontUnderstand && dontUnderstand.checked) {
+            const hasLikertAnswer = likertScale && likertScale.querySelector('input:checked');
+            if (!hasLikertAnswer) {
+                showDontUnderstandReminder();
+                return; // Don't proceed until they select a Likert option
+            }
+        }
+        
         await saveCurrentAnswer();
         
         // If we're in the optional questions section, submit this answer to Supabase immediately
