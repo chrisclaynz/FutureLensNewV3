@@ -266,7 +266,7 @@ export function createSurvey(dependencies = {}) {
                 <div class="button-container">
                     ${isOptionalSection ? '' : currentQuestionIndex > 0 ? '<button id="prevButton" class="secondary-button">Previous</button>' : ''}
                     ${isOptionalSection ? '<button id="goToResultsButton" class="secondary-button">Go to Results Page</button>' : ''}
-                    <button id="nextButton" class="${isAtLastRequiredQuestion() && question.required ? 'submit-button' : 'primary-button'}" disabled>${isAtLastRequiredQuestion() && question.required ? 'SUBMIT' : 'Next'}</button>
+                    <button id="nextButton" class="${isAtLastRequiredQuestion() && question.required ? 'primary-button submit-button' : 'primary-button'}" disabled>${isAtLastRequiredQuestion() && question.required ? 'SUBMIT' : 'Next'}</button>
                 </div>
             </div>
         `;
