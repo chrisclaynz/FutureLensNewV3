@@ -12,15 +12,16 @@ const supabaseKey = typeof import.meta !== 'undefined'
     ? import.meta.env.VITE_SUPABASE_ANON_KEY
     : process.env.VITE_SUPABASE_ANON_KEY;
 
+// Only initialize the client once at module load time
+// This prevents multiple instances from being created
+if (!window.GLOBAL_SUPABASE_CLIENT) {
+    console.log('Creating Supabase client instance');
+    window.GLOBAL_SUPABASE_CLIENT = createClient(supabaseUrl, supabaseKey);
+}
+
 function getSupabaseClient() {
-    if (!supabaseInstance) {
-        instanceCount++;
-        console.log(`Creating Supabase client instance #${instanceCount}`);
-        supabaseInstance = createClient(supabaseUrl, supabaseKey);
-    } else {
-        console.log('Reusing existing Supabase client instance');
-    }
-    return supabaseInstance;
+    console.log('Reusing existing Supabase client instance');
+    return window.GLOBAL_SUPABASE_CLIENT;
 }
 
 // Initialize Supabase and verify database structure

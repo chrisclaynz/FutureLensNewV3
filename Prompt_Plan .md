@@ -80,7 +80,7 @@ CopyEdit
    `- signInUser(email, password): uses supabase.auth.signInWithPassword({ email, password }) to log in.` 
 
 
-`2. In index.html, add a simple form for email and password with a “Sign In” button. On submit, call signInUser. Optionally, provide a separate form or toggle for signUpUser if you want to allow user registration from the same page.`  
+`2. In index.html, add a simple form for email and password with a "Sign In" button. On submit, call signInUser. Optionally, provide a separate form or toggle for signUpUser if you want to allow user registration from the same page.`  
 `3. On successful sign-in, store the returned user session (e.g. access token) in localStorage or a global state variable. On failure, show an appropriate error message.`  
 `4. Provide a Jest (or any) test file that:`  
 `   - Mocks the Supabase client calls for signUp and signIn.`  
@@ -103,7 +103,7 @@ CopyEdit
 
 `3. Create a function displayNextQuestion() that reads the current question index from localStorage and renders the question in the DOM. Include:`  
    `- Likert scale (+2, +1, -1, -2)`  
-   `- “I Don’t Understand” checkbox`  
+   `- "I Don't Understand" checkbox`  
    `- A "Next" button (disabled unless an answer is selected).`
 
 `4. Provide a test that ensures fetchSurvey returns a valid JSON object from the table (mocking the supabase call) and that initSurvey properly stores question order.`
@@ -138,7 +138,7 @@ CopyEdit
 
 ---
 
-### **Prompt 7: Required vs. Optional Questions (No ‘Save Now’ Button)**
+### **Prompt 7: Required vs. Optional Questions (No 'Save Now' Button)**
 
 vbnet  
 CopyEdit  
@@ -162,6 +162,41 @@ CopyEdit
 
 ---
 
+### **Prompt 7a: Multiple Survey Support**
+
+vbnet  
+CopyEdit  
+`Extend the application to support multiple surveys with survey codes:`
+
+`1. In auth.js, after successful login, add a function showSurveyCodeInput() that:`  
+   `- Displays a form with a text input for the survey code`  
+   `- Has a "Continue" button that calls loadSurveyByCode(code)`
+
+`2. In survey.js, create the loadSurveyByCode(code) function that:`  
+   `- Queries the cohorts table to find the cohort with matching code`  
+   `- Gets the associated survey_id from the cohort`  
+   `- Queries the surveys table for that survey_id to retrieve the survey configuration`  
+   `- Creates a participant record with user_id, cohort_id, and survey_id`  
+   `- Calls initSurvey() with the retrieved survey configuration`
+
+`3. Update finalSubmission() in survey.js to:`  
+   `- Ensure all response records include the participant_id that links to the right survey`  
+   `- Pass the appropriate survey_id to the results page for proper scoring`
+
+`4. In results.js, modify calculateScores(participantId) to:`  
+   `- Get the survey_id associated with the participant`  
+   `- Apply the correct scoring logic based on the survey configuration`
+
+`5. Write tests that verify:`  
+   `- A valid survey code loads the correct survey`  
+   `- An invalid survey code shows an appropriate error`  
+   `- Responses are correctly associated with the right survey`  
+   `- Results calculations use the correct survey configuration`
+
+`Return the updated auth.js, survey.js, results.js files, and describe how the user flow changes to incorporate survey code entry.`
+
+---
+
 ### **Prompt 8: Results Page & Scoring**
 
 vbnet  
@@ -170,7 +205,7 @@ CopyEdit
 
 `1. In results.js, create a function calculateScores(participantId) that fetches the just-submitted responses from Supabase and computes continuum averages.`   
    `- Each question's likert value can be added or subtracted based on alignment if needed.`  
-   `- "I Don’t Understand" is recorded but doesn't block scoring.`
+   `- "I Don't Understand" is recorded but doesn't block scoring.`
 
 `2. Display a summary of each continuum's average.`   
 `3. Provide a minimal "Compare with My Group" placeholder if participants have cohorts, or simply show "Coming soon."`  
@@ -193,7 +228,7 @@ CopyEdit
    `- No inline styles (ensure css/styles.css is used).`  
    `- RLS is enforced (users only see their own data).`  
    `- Single final submission approach (no partial sync).`  
-   `- No leftover references to partial offline submission or “Save Now” button.`  
+   `- No leftover references to partial offline submission or "Save Now" button.`  
    `- Working scoring logic, results screen.`
 
 `5. Provide the final integrated code and instructions for deploying to a static hosting environment with Supabase as the backend.`

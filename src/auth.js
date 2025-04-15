@@ -6,12 +6,16 @@ export const auth = {
         console.log('Auth module initialized');
         const loginForm = document.getElementById('loginForm');
         const signupForm = document.getElementById('signupForm');
+        const surveyCodeForm = document.getElementById('surveyCodeForm');
         
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         }
         if (signupForm) {
             signupForm.addEventListener('submit', (e) => this.handleSignup(e));
+        }
+        if (surveyCodeForm) {
+            surveyCodeForm.addEventListener('submit', (e) => this.handleSurveyCode(e));
         }
     },
 
@@ -31,8 +35,8 @@ export const auth = {
             if (data?.user) {
                 // Store session info
                 localStorage.setItem('participant_id', data.user.id);
-                // Redirect to survey
-                window.location.href = '/survey.html';
+                // Redirect to survey code page instead of directly to survey
+                window.location.href = '/survey-code.html';
             }
         } catch (error) {
             console.error('Login error:', error.message);
@@ -62,6 +66,49 @@ export const auth = {
         }
     },
 
+    async handleSurveyCode(event) {
+        event.preventDefault();
+        const code = event.target.elements.code.value.trim();
+        
+        if (!code) {
+            this.showError('Please enter a survey code');
+            return;
+        }
+        
+        try {
+            // Query the cohorts table to find the cohort with this code
+            const { data, error } = await supabase
+                .from('cohorts')
+                .select('id, survey_id')
+                .eq('code', code);
+                
+            if (error) {
+                console.error('Error finding cohort:', error.message);
+                this.showError('Error validating survey code. Please try again.');
+                return;
+            }
+            
+            if (!data || data.length === 0) {
+                console.error('No cohort found with code:', code);
+                this.showError('Invalid survey code. Please check and try again.');
+                return;
+            }
+            
+            // Use the first matching cohort
+            const cohort = data[0];
+            
+            // Store the cohort ID and survey ID in localStorage
+            localStorage.setItem('cohort_id', cohort.id);
+            localStorage.setItem('survey_id', cohort.survey_id);
+            
+            // Redirect to the survey page
+            window.location.href = '/survey.html';
+        } catch (error) {
+            console.error('Survey code error:', error.message);
+            this.showError('Error validating survey code. Please try again.');
+        }
+    },
+
     showError(message) {
         const errorDiv = document.getElementById('error-message');
         if (errorDiv) {
@@ -79,11 +126,12 @@ export const auth = {
     }
 };
 
-// Initialize auth module when DOM is loaded - but only if we're on the index page
+// Initialize auth module when DOM is loaded - but only if we're on the auth or survey code page
 const isAuthPage = !window.location.pathname.includes('survey.html') && 
                    !window.location.pathname.includes('results.html');
+const isSurveyCodePage = window.location.pathname.includes('survey-code.html');
 
-if (isAuthPage) {
+if (isAuthPage || isSurveyCodePage) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             auth.init();

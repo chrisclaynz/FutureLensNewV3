@@ -31,9 +31,11 @@ export function createApp(dependencies = {}) {
 
     async function handleDOMContentLoaded() {
         try {
-            // Check if this is the auth page (index.html)
-            const isAuthPage = !win.location.pathname.includes('survey.html') && 
-                               !win.location.pathname.includes('results.html');
+            // Check what page we're on
+            const isAuthPage = win.location.pathname.includes('index.html') || 
+                               win.location.pathname === '/';
+            const isSurveyCodePage = win.location.pathname.includes('survey-code.html');
+            const isResultsPage = win.location.pathname.includes('results.html');
             
             // Get the current session
             const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -46,13 +48,25 @@ export function createApp(dependencies = {}) {
                 win.location.href = '/';
                 return;
             } else if (session && isAuthPage) {
-                // If logged in and on auth page, redirect to survey
+                // If logged in and on auth page, redirect to survey code page
                 // Store user ID in localStorage for the survey
                 if (session.user) {
                     storage.setItem('participant_id', session.user.id);
                 }
-                win.location.href = '/survey.html';
+                win.location.href = '/survey-code.html';
                 return;
+            }
+            
+            // If logged in and on survey code page, no need to redirect
+            // If logged in and on survey page, and has survey_id, no need to redirect
+            if (session && isSurveyPage) {
+                const hasSurveyId = storage.getItem('survey_id');
+                
+                if (!hasSurveyId) {
+                    // If on survey page but no survey ID, redirect to survey code page
+                    win.location.href = '/survey-code.html';
+                    return;
+                }
             }
             
             // Initialize survey if on survey page

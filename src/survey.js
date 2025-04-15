@@ -83,8 +83,31 @@ export function createSurvey(dependencies = {}) {
         // Extract all statements/questions from the JSON
         questions = surveyJson.statements || [];
         
-        // Randomly shuffle the questions if needed
-        questions = shuffleArray([...questions]);
+        console.log('Processing survey questions:', {
+            totalQuestions: questions.length,
+            requiredQuestions: questions.filter(q => q.required === true).length,
+            optionalQuestions: questions.filter(q => q.required === false).length,
+            unspecifiedQuestions: questions.filter(q => q.required === undefined).length
+        });
+        
+        // Split questions into required and optional
+        const requiredQuestions = questions.filter(q => q.required === true);
+        const optionalQuestions = questions.filter(q => q.required === false || q.required === undefined);
+        
+        console.log('Required questions: ', requiredQuestions.length);
+        console.log('Optional questions: ', optionalQuestions.length);
+        
+        // Randomly shuffle each group separately
+        const shuffledRequired = shuffleArray([...requiredQuestions]);
+        const shuffledOptional = shuffleArray([...optionalQuestions]);
+        
+        // Combine with required questions first, then optional
+        questions = [...shuffledRequired, ...shuffledOptional];
+        
+        console.log('Final question order:');
+        questions.forEach((q, index) => {
+            console.log(`${index + 1}: ${q.id} - ${q.text} (${q.required ? 'Required' : 'Optional'})`);
+        });
         
         // Create an ordered array of question indices
         questionOrder = questions.map((_, index) => index);
@@ -119,6 +142,7 @@ export function createSurvey(dependencies = {}) {
         
         // Check if we have reached the end of the survey
         if (currentQuestionIndex >= questions.length) {
+            console.log('Reached end of survey, showing completion screen');
             showCompletionScreen();
             return;
         }
@@ -131,35 +155,89 @@ export function createSurvey(dependencies = {}) {
             return;
         }
         
+        // Better detection of the transition from required to optional questions
+        const isFirstOptionalQuestion = question.required === false && checkAllRequiredQuestionsAnswered();
+        const hasRequiredQuestions = questions.some(q => q.required === true);
+        
+        // Debug logs to understand the current state
+        console.log('Current question:', {
+            index: currentQuestionIndex,
+            id: question.id,
+            text: question.text.substring(0, 30) + '...',
+            required: question.required
+        });
+        
+        console.log('Question state:', {
+            isFirstOptionalQuestion,
+            hasRequiredQuestions,
+            allRequiredAnswered: checkAllRequiredQuestionsAnswered()
+        });
+        
+        // Check if we should skip the intermediate screen
+        const skipIntermediateScreen = storage.getItem('skipIntermediateScreen') === 'true';
+        
+        // Show intermediate screen if we're at the first optional question AND all required questions are answered
+        // But only if we haven't already shown it
+        if (isFirstOptionalQuestion && hasRequiredQuestions && !skipIntermediateScreen) {
+            console.log('Showing intermediate completion screen (all required questions answered)');
+            showCompletionScreen(); // Show the intermediate screen
+            return;
+        }
+        
         // Update the UI
-        const questionElement = win.document.getElementById('question');
-        const questionTextElement = win.document.getElementById('questionText');
-        const likertScale = win.document.getElementById('likertScale');
-        const dontUnderstand = win.document.getElementById('dontUnderstand');
-        const nextButton = win.document.getElementById('nextButton');
+        const surveyContent = win.document.getElementById('survey-content');
+        if (!surveyContent) return;
         
-        if (questionElement) {
-            questionElement.textContent = `Question ${currentQuestionIndex + 1} of ${questions.length}`;
-        }
+        // Determine if we're in the optional questions section
+        const isOptionalSection = !question.required && checkAllRequiredQuestionsAnswered();
         
-        if (questionTextElement) {
-            questionTextElement.textContent = question.text;
-        }
+        // Create HTML structure with appropriate buttons
+        let questionsHTML = `
+            <div class="question-content">
+                <h2 id="question">Question ${currentQuestionIndex + 1} of ${questions.length}</h2>
+                <div id="questionText">${question.text}</div>
+            </div>
+            
+            <div class="options-container">
+                <div class="likert-container">
+                    <p class="instructions">Please select one of the options below:</p>
+                    <div id="likertScale" class="likert-scale">
+                        <div class="likert-option">
+                            <input type="radio" name="likert" id="likert-strong-disagree" value="-2">
+                            <label for="likert-strong-disagree">Strongly Disagree</label>
+                        </div>
+                        <div class="likert-option">
+                            <input type="radio" name="likert" id="likert-disagree" value="-1">
+                            <label for="likert-disagree">Disagree</label>
+                        </div>
+                        <div class="likert-option">
+                            <input type="radio" name="likert" id="likert-agree" value="1">
+                            <label for="likert-agree">Agree</label>
+                        </div>
+                        <div class="likert-option">
+                            <input type="radio" name="likert" id="likert-strong-agree" value="2">
+                            <label for="likert-strong-agree">Strongly Agree</label>
+                        </div>
+                    </div>
+                    
+                    <div class="dont-understand-container">
+                        <input type="checkbox" id="dontUnderstand">
+                        <label for="dontUnderstand">I don't understand this question</label>
+                    </div>
+                </div>
+                
+                <div class="button-container">
+                    ${isOptionalSection ? '' : currentQuestionIndex > 0 ? '<button id="prevButton" class="secondary-button">Previous</button>' : ''}
+                    ${isOptionalSection ? '<button id="goToResultsButton" class="secondary-button">Go to Results Page</button>' : ''}
+                    <button id="nextButton" class="primary-button" disabled>Next</button>
+                </div>
+            </div>
+        `;
         
-        // Reset form elements
-        if (likertScale) {
-            likertScale.querySelectorAll('input').forEach(input => {
-                input.checked = false;
-            });
-        }
+        surveyContent.innerHTML = questionsHTML;
         
-        if (dontUnderstand) {
-            dontUnderstand.checked = false;
-        }
-        
-        if (nextButton) {
-            nextButton.disabled = true;
-        }
+        // Set up event listeners
+        setupEventListeners(isOptionalSection);
         
         // Optionally load any previously stored answer for this question
         loadSavedAnswer(question.id);
@@ -265,21 +343,180 @@ export function createSurvey(dependencies = {}) {
         recordAnswer(currentQuestion.id, likertValue, dontUnderstandValue);
     }
 
+    function checkAllRequiredQuestionsAnswered() {
+        // Get all required questions
+        const requiredQuestions = questions.filter(q => q.required === true);
+        if (requiredQuestions.length === 0) {
+            console.log('No required questions found, returning true');
+            return true; // No required questions, so all are "answered"
+        }
+        
+        // Get all saved answers
+        const savedAnswers = storage.getItem('surveyAnswers');
+        if (!savedAnswers) {
+            console.log('No saved answers found, returning false');
+            return false; // No answers saved at all
+        }
+        
+        const answers = JSON.parse(savedAnswers);
+        
+        // Log details for debugging
+        console.log('Checking required questions:', {
+            totalRequired: requiredQuestions.length,
+            totalAnswers: answers.length,
+            requiredIds: requiredQuestions.map(q => q.id),
+            answeredIds: answers.map(a => a.question_key)
+        });
+        
+        // Check that each required question has an answer with a likert_value
+        const allAnswered = requiredQuestions.every(question => {
+            const answer = answers.find(a => a.question_key === question.id);
+            const isAnswered = answer && answer.likert_value !== null;
+            
+            if (!isAnswered) {
+                console.log(`Required question ${question.id} is not answered`);
+            }
+            
+            return isAnswered;
+        });
+        
+        console.log('All required questions answered:', allAnswered);
+        return allAnswered;
+    }
+    
+    function isCurrentQuestionRequired() {
+        if (!questions[currentQuestionIndex]) return false;
+        const required = questions[currentQuestionIndex].required === true;
+        console.log(`Question ${questions[currentQuestionIndex].id} required:`, required);
+        return required;
+    }
+    
+    function isAtLastRequiredQuestion() {
+        if (currentQuestionIndex >= questions.length - 1) return true;
+        
+        // Check if all questions after this one are optional
+        for (let i = currentQuestionIndex + 1; i < questions.length; i++) {
+            if (questions[i].required === true) {
+                return false;
+            }
+        }
+        return true;
+    }
+    
     function showCompletionScreen() {
         const surveyContent = win.document.getElementById('survey-content');
-        if (surveyContent) {
+        if (!surveyContent) return;
+        
+        // Check if we've finished all questions
+        const isAtEnd = currentQuestionIndex >= questions.length;
+        // Check if we've just finished the required questions section
+        const justFinishedRequired = !isAtEnd && !isCurrentQuestionRequired() && 
+                                    checkAllRequiredQuestionsAnswered();
+
+        console.log('showCompletionScreen called with state:', {
+            isAtEnd,
+            justFinishedRequired,
+            currentIndex: currentQuestionIndex,
+            totalQuestions: questions.length
+        });
+
+        if (isAtEnd) {
+            // Final completion screen - all questions completed
             surveyContent.innerHTML = `
                 <div class="completion-screen">
                     <h2>Survey Completed</h2>
                     <p>Thank you for completing the survey!</p>
-                    <button id="submitSurveyButton" class="primary-button">Submit Answers</button>
+                    <button id="goToResultsButton" class="primary-button">Go to Results Page</button>
                 </div>
             `;
             
-            const submitButton = win.document.getElementById('submitSurveyButton');
-            if (submitButton) {
-                submitButton.addEventListener('click', finalSubmission);
+            const resultButton = win.document.getElementById('goToResultsButton');
+            if (resultButton) {
+                resultButton.addEventListener('click', finalSubmission);
             }
+        } else if (justFinishedRequired) {
+            // Intermediate screen after completing required questions
+            const optionalCount = questions.filter(q => q.required === false).length;
+            
+            surveyContent.innerHTML = `
+                <div class="completion-screen">
+                    <h2>Required Questions Completed</h2>
+                    <p>Thank you for answering all required questions!</p>
+                    <p>There are ${optionalCount} optional questions available.</p>
+                    <div class="button-container">
+                        <button id="optionalQuestionsButton" class="secondary-button">Answer Additional Questions</button>
+                        <button id="goToResultsButton" class="primary-button">Go to Results Page</button>
+                    </div>
+                </div>
+            `;
+            
+            // Explicitly add debug click handler to help diagnose issues
+            console.log('Adding event listeners to completion screen buttons');
+            
+            // Get references to the buttons
+            const optionalButton = win.document.getElementById('optionalQuestionsButton');
+            const resultButton = win.document.getElementById('goToResultsButton');
+            
+            // Add event listener to the optional questions button
+            if (optionalButton) {
+                console.log('Optional questions button found, adding click event');
+                optionalButton.onclick = function() {
+                    console.log('Optional questions button clicked');
+                    handleContinueToOptional();
+                };
+            } else {
+                console.error('Optional questions button not found in DOM');
+            }
+            
+            // Add event listener to the results button
+            if (resultButton) {
+                console.log('Results button found, adding click event');
+                resultButton.onclick = function() {
+                    console.log('Results button clicked');
+                    finalSubmission();
+                };
+            } else {
+                console.error('Results button not found in DOM');
+            }
+        } else {
+            // Should not reach here, but show a basic message if it does
+            surveyContent.innerHTML = `
+                <div class="completion-screen">
+                    <h2>Survey Progress</h2>
+                    <p>Please continue answering the questions.</p>
+                    <button id="continueButton" class="primary-button">Continue Survey</button>
+                </div>
+            `;
+            
+            const continueButton = win.document.getElementById('continueButton');
+            if (continueButton) {
+                continueButton.onclick = function() {
+                    displayNextQuestion();
+                };
+            }
+        }
+    }
+    
+    function handleContinueToOptional() {
+        console.log('handleContinueToOptional called - transitioning to optional questions');
+        
+        // Set a flag to avoid showing the intermediate screen again
+        storage.setItem('skipIntermediateScreen', 'true');
+        
+        // Find the index of the first optional question
+        const firstOptionalIndex = questions.findIndex(q => q.required === false);
+        
+        if (firstOptionalIndex !== -1) {
+            console.log(`Found first optional question at index ${firstOptionalIndex}`);
+            currentQuestionIndex = firstOptionalIndex;
+            // Save the updated index
+            storage.setItem('currentQuestionIndex', currentQuestionIndex.toString());
+            
+            // Simply display the next question instead of trying to manipulate DOM elements directly
+            displayNextQuestion();
+        } else {
+            console.log('No optional questions found, proceeding to results');
+            finalSubmission();
         }
     }
 
@@ -398,9 +635,10 @@ export function createSurvey(dependencies = {}) {
         }
     }
 
-    function setupEventListeners() {
+    function setupEventListeners(isOptionalSection = false) {
         const nextButton = win.document.getElementById('nextButton');
         const prevButton = win.document.getElementById('prevButton');
+        const resultsButton = win.document.getElementById('goToResultsButton');
         const likertScale = win.document.getElementById('likertScale');
         const dontUnderstand = win.document.getElementById('dontUnderstand');
 
@@ -409,6 +647,9 @@ export function createSurvey(dependencies = {}) {
         }
         if (prevButton) {
             prevButton.addEventListener('click', handlePrev);
+        }
+        if (resultsButton) {
+            resultsButton.addEventListener('click', finalSubmission);
         }
         if (likertScale) {
             likertScale.addEventListener('change', updateNextButtonState);
@@ -432,9 +673,60 @@ export function createSurvey(dependencies = {}) {
 
     async function handleNext() {
         await saveCurrentAnswer();
+        
+        // If we're in the optional questions section, submit this answer to Supabase immediately
+        const currentQuestion = questions[currentQuestionIndex];
+        if (currentQuestion && currentQuestion.required === false && checkAllRequiredQuestionsAnswered()) {
+            await submitCurrentQuestionToSupabase();
+        }
+        
+        // Move to the next question
         currentQuestionIndex++;
         storage.setItem('currentQuestionIndex', currentQuestionIndex.toString());
         displayNextQuestion();
+    }
+
+    async function submitCurrentQuestionToSupabase() {
+        try {
+            if (!navigator.onLine) {
+                // If offline, just store locally and don't try to sync
+                console.log('Currently offline, skipping Supabase submission');
+                return;
+            }
+            
+            const currentQuestion = questions[currentQuestionIndex];
+            if (!currentQuestion) return;
+            
+            // Get the saved answer for this question
+            const savedAnswers = JSON.parse(storage.getItem('surveyAnswers') || '[]');
+            const answer = savedAnswers.find(a => a.question_key === currentQuestion.id);
+            if (!answer) return;
+            
+            // Get user ID and participant ID
+            let participantId = storage.getItem('futurelens_participant_id');
+            if (!participantId) {
+                console.error('No participant ID found, cannot submit to Supabase');
+                return;
+            }
+            
+            // Submit to Supabase
+            const { error } = await supabaseClient
+                .from('responses')
+                .insert({
+                    participant_id: participantId,
+                    question_key: answer.question_key,
+                    likert_value: answer.likert_value,
+                    dont_understand: answer.dont_understand
+                });
+                
+            if (error) {
+                console.error('Error submitting optional question answer:', error);
+            } else {
+                console.log('Optional question answer submitted to Supabase:', answer.question_key);
+            }
+        } catch (error) {
+            console.error('Error in submitCurrentQuestionToSupabase:', error);
+        }
     }
 
     async function handlePrev() {
@@ -467,10 +759,19 @@ export function createSurvey(dependencies = {}) {
             surveyData = JSON.parse(savedSurvey);
             questions = surveyData.statements || [];
         } else {
-            // Start a new survey - load the prototype directly
-            // In a real app, you would get the survey ID from the participant record
-            surveyData = await fetchSurvey();
-            initSurvey(surveyData);
+            // Start a new survey
+            // Get the survey ID from localStorage (set during the survey code entry step)
+            const storedSurveyId = storage.getItem('survey_id');
+            
+            if (storedSurveyId) {
+                console.log('Using survey ID from localStorage:', storedSurveyId);
+                surveyData = await fetchSurvey(storedSurveyId);
+                initSurvey(surveyData);
+            } else {
+                console.warn('No survey ID found in localStorage, falling back to latest survey');
+                surveyData = await fetchSurvey();
+                initSurvey(surveyData);
+            }
         }
         
         // Setup event listeners
@@ -489,7 +790,10 @@ export function createSurvey(dependencies = {}) {
         showCompletionScreen,
         handleNext,
         handlePrev,
-        finalSubmission
+        finalSubmission,
+        checkAllRequiredQuestionsAnswered,
+        isCurrentQuestionRequired,
+        submitCurrentQuestionToSupabase
     };
 }
 

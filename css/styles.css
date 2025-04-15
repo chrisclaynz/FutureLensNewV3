@@ -868,4 +868,128 @@ button:disabled {
     .dont-understand-container {
         margin-bottom: 0;
     }
+}
+
+/* Survey Code Container - Styles based on auth-container */
+.survey-code-container {
+    max-width: 400px;
+    margin: 50px auto;
+    padding: 30px;
+    background-color: #fff;
+    border-radius: var(--border-radius);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    text-align: center;
+}
+
+.survey-code-container h1 {
+    font-size: 24px;
+    margin-bottom: 20px;
+    color: var(--primary-color);
+}
+
+.survey-code-form {
+    margin-top: 20px;
+}
+
+.survey-code-form h2 {
+    font-size: 18px;
+    margin-bottom: 10px;
+    color: #333;
+}
+
+.survey-code-form p {
+    margin-bottom: 20px;
+    color: #666;
+    font-size: 14px;
+}
+
+#continue-button {
+    background-color: var(--primary-color);
+    color: white;
+    font-weight: 600;
+    width: 100%;
+    margin-top: 10px;
+}
+
+#continue-button:hover {
+    background-color: #3a7bc8;
+}
+
+/* Responsive adjustments for mobile */
+@media (max-width: 480px) {
+    .survey-code-container {
+        margin: 30px auto;
+        padding: 20px;
+        width: 90%;
+    }
+}
+
+/* Button styles */
+.button-container {
+    display: flex;
+    gap: 10px;
+    margin-top: 20px;
+    justify-content: flex-end;
+}
+
+.primary-button {
+    padding: 10px 20px;
+    background-color: #4a90e2;
+    color: white;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.primary-button:hover {
+    background-color: #3a7bc8;
+}
+
+.primary-button:disabled {
+    background-color: #cccccc;
+    cursor: not-allowed;
+}
+
+.secondary-button {
+    padding: 10px 20px;
+    background-color: #f5f5f5;
+    color: #333;
+    border: 1px solid #ccc;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 16px;
+}
+
+.secondary-button:hover {
+    background-color: #e8e8e8;
+}
+
+.completion-screen {
+    text-align: center;
+    padding: 20px;
+}
+
+.completion-screen h2 {
+    margin-bottom: 20px;
+}
+
+.completion-screen .button-container {
+    justify-content: center;
+    margin-top: 30px;
+}
+
+/* Required/Optional Indicators */
+.required-indicator {
+    color: #e74c3c;
+    font-weight: bold;
+    margin-top: 10px;
+    font-size: 14px;
+}
+
+.optional-indicator {
+    color: #7f8c8d;
+    font-style: italic;
+    margin-top: 10px;
+    font-size: 14px;
 } 

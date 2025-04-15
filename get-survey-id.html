@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Supabase Survey Operations</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <h1>Supabase Survey Operations</h1>
+    <div id="output" style="white-space: pre; font-family: monospace; background-color: #f0f0f0; padding: 20px;"></div>
+    
+    <script>
+        const supabaseUrl = 'https://noxrttgtvhtoiejujoyd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5veHJ0dGd0dmh0b2llanVqb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTM0NjAsImV4cCI6MjA1OTkyOTQ2MH0.fYAZdAQvWerLIR8OYajCMc8rM90g--GqR3stlHNk7Hk';
+        const supabase = supabase.createClient(supabaseUrl, supabaseKey);
+        const output = document.getElementById('output');
+
+        async function logMessage(message) {
+            output.innerHTML += message + '\n';
+            console.log(message);
+        }
+
+        async function getSurveys() {
+            try {
+                logMessage('Fetching surveys...');
+                const { data: surveys, error } = await supabase
+                    .from('surveys')
+                    .select('id, json_config')
+                    .order('inserted_at', { ascending: false })
+                    .limit(5);
+
+                if (error) {
+                    throw error;
+                }
+
+                if (surveys && surveys.length > 0) {
+                    logMessage(`Found ${surveys.length} surveys`);
+                    surveys.forEach(survey => {
+                        logMessage(`Survey ID: ${survey.id}`);
+                    });
+
+                    // Use the first survey ID to create a cohort with SRV102 code
+                    const surveyId = surveys[0].id;
+                    await createCohort(surveyId);
+                } else {
+                    logMessage('No surveys found. Creating a sample one...');
+                    await createSampleSurvey();
+                }
+            } catch (error) {
+                logMessage(`Error: ${error.message}`);
+            }
+        }
+
+        async function createSampleSurvey() {
+            try {
+                const sampleSurvey = {
+                    theme: {
+                        title: "Sample Survey",
+                        instructions: "This is a sample survey created automatically."
+                    },
+                    statements: [
+                        {
+                            id: "q1",
+                            text: "Sample question 1",
+                            alignment: "left",
+                            continuum: "sample",
+                            hasDontUnderstand: true
+                        }
+                    ],
+                    continua: {
+                        sample: {
+                            name: "Sample Continuum",
+                            description: "Sample description",
+                            labels: { left: "Left", right: "Right" }
+                        }
+                    }
+                };
+
+                const { data, error } = await supabase
+                    .from('surveys')
+                    .insert({ json_config: sampleSurvey })
+                    .select('id');
+
+                if (error) {
+                    throw error;
+                }
+
+                logMessage(`Created sample survey with ID: ${data[0].id}`);
+                await createCohort(data[0].id);
+            } catch (error) {
+                logMessage(`Error creating sample survey: ${error.message}`);
+            }
+        }
+
+        async function createCohort(surveyId) {
+            try {
+                // First check if cohort with SRV102 already exists
+                const { data: existingCohorts, error: checkError } = await supabase
+                    .from('cohorts')
+                    .select('id, code')
+                    .eq('code', 'SRV102');
+
+                if (checkError) {
+                    throw checkError;
+                }
+
+                if (existingCohorts && existingCohorts.length > 0) {
+                    logMessage(`Cohort with code SRV102 already exists with ID: ${existingCohorts[0].id}`);
+                    return;
+                }
+
+                // Create new cohort
+                const { data, error } = await supabase
+                    .from('cohorts')
+                    .insert({
+                        code: 'SRV102',
+                        label: 'Test Cohort',
+                        survey_id: surveyId
+                    })
+                    .select('id');
+
+                if (error) {
+                    throw error;
+                }
+
+                logMessage(`Successfully created cohort with code SRV102 and ID: ${data[0].id}`);
+                logMessage(`Linked to survey ID: ${surveyId}`);
+                logMessage('You can now use SRV102 as your survey code.');
+            } catch (error) {
+                logMessage(`Error creating cohort: ${error.message}`);
+            }
+        }
+
+        // Run the operations when page loads
+        window.onload = getSurveys;
+    </script>
+</body>
+</html> 

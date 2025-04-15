@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Create Test Surveys</title>
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 20px; line-height: 1.6; }
+        pre { background: #f5f5f5; padding: 15px; border-radius: 5px; overflow-x: auto; }
+        button { padding: 8px 15px; background: #4a90e2; color: white; border: none; border-radius: 4px; cursor: pointer; margin-right: 10px; margin-bottom: 10px; }
+        button:hover { background: #3a7bc8; }
+        #output { padding: 15px; background: #f0f0f0; border-radius: 5px; white-space: pre-wrap; font-family: monospace; margin-top: 20px; }
+    </style>
+</head>
+<body>
+    <h1>Create Test Surveys</h1>
+    <p>This utility helps create test surveys with required and optional questions for testing.</p>
+    
+    <div>
+        <button id="createSurveyA">Create Survey A - Mixed Required/Optional</button>
+        <button id="createSurveyB">Create Survey B - All Required</button>
+        <button id="createSurveyC">Create Survey C - All Optional</button>
+        <button id="listSurveys">List All Surveys</button>
+        <button id="updateCohorts">Update Cohort Codes</button>
+    </div>
+    
+    <h2>Results:</h2>
+    <div id="output"></div>
+    
+    <script>
+        const supabaseUrl = 'https://noxrttgtvhtoiejujoyd.supabase.co';
+        const supabaseKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5veHJ0dGd0dmh0b2llanVqb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTM0NjAsImV4cCI6MjA1OTkyOTQ2MH0.fYAZdAQvWerLIR8OYajCMc8rM90g--GqR3stlHNk7Hk';
+        const { createClient } = supabase;
+        const supabaseClient = createClient(supabaseUrl, supabaseKey);
+        const output = document.getElementById('output');
+
+        function log(message) {
+            console.log(message);
+            output.textContent += message + '\n';
+        }
+        
+        async function createSurveyA() {
+            try {
+                log('Creating Survey A with mixed required/optional questions...');
+                
+                const surveyA = {
+                    theme: {
+                        title: "Survey A - Mixed Required/Optional",
+                        instructions: "This survey has some required and some optional questions."
+                    },
+                    statements: [
+                        {
+                            id: "a1",
+                            text: "Required Question 1",
+                            alignment: "left",
+                            continuum: "test",
+                            required: true,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "a2",
+                            text: "Required Question 2",
+                            alignment: "right",
+                            continuum: "test",
+                            required: true,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "a3",
+                            text: "Optional Question 1",
+                            alignment: "left",
+                            continuum: "test",
+                            required: false,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "a4",
+                            text: "Optional Question 2",
+                            alignment: "right",
+                            continuum: "test",
+                            required: false,
+                            hasDontUnderstand: true
+                        }
+                    ],
+                    continua: {
+                        test: {
+                            name: "Test Continuum",
+                            description: "Test description",
+                            labels: { left: "Left", right: "Right" }
+                        }
+                    }
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('surveys')
+                    .insert({ json_config: surveyA })
+                    .select('id');
+                    
+                if (error) throw error;
+                
+                log(`Survey A created with ID: ${data[0].id}`);
+                return data[0].id;
+            } catch (error) {
+                log(`Error creating Survey A: ${error.message}`);
+            }
+        }
+        
+        async function createSurveyB() {
+            try {
+                log('Creating Survey B with all required questions...');
+                
+                const surveyB = {
+                    theme: {
+                        title: "Survey B - All Required",
+                        instructions: "This survey has only required questions."
+                    },
+                    statements: [
+                        {
+                            id: "b1",
+                            text: "Required Question 1",
+                            alignment: "left",
+                            continuum: "test",
+                            required: true,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "b2",
+                            text: "Required Question 2",
+                            alignment: "right",
+                            continuum: "test",
+                            required: true,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "b3",
+                            text: "Required Question 3",
+                            alignment: "left",
+                            continuum: "test",
+                            required: true,
+                            hasDontUnderstand: true
+                        }
+                    ],
+                    continua: {
+                        test: {
+                            name: "Test Continuum",
+                            description: "Test description",
+                            labels: { left: "Left", right: "Right" }
+                        }
+                    }
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('surveys')
+                    .insert({ json_config: surveyB })
+                    .select('id');
+                    
+                if (error) throw error;
+                
+                log(`Survey B created with ID: ${data[0].id}`);
+                return data[0].id;
+            } catch (error) {
+                log(`Error creating Survey B: ${error.message}`);
+            }
+        }
+        
+        async function createSurveyC() {
+            try {
+                log('Creating Survey C with all optional questions...');
+                
+                const surveyC = {
+                    theme: {
+                        title: "Survey C - All Optional",
+                        instructions: "This survey has only optional questions."
+                    },
+                    statements: [
+                        {
+                            id: "c1",
+                            text: "Optional Question 1",
+                            alignment: "left",
+                            continuum: "test",
+                            required: false,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "c2",
+                            text: "Optional Question 2",
+                            alignment: "right",
+                            continuum: "test",
+                            required: false,
+                            hasDontUnderstand: true
+                        },
+                        {
+                            id: "c3",
+                            text: "Optional Question 3",
+                            alignment: "left",
+                            continuum: "test",
+                            required: false,
+                            hasDontUnderstand: true
+                        }
+                    ],
+                    continua: {
+                        test: {
+                            name: "Test Continuum",
+                            description: "Test description",
+                            labels: { left: "Left", right: "Right" }
+                        }
+                    }
+                };
+                
+                const { data, error } = await supabaseClient
+                    .from('surveys')
+                    .insert({ json_config: surveyC })
+                    .select('id');
+                    
+                if (error) throw error;
+                
+                log(`Survey C created with ID: ${data[0].id}`);
+                return data[0].id;
+            } catch (error) {
+                log(`Error creating Survey C: ${error.message}`);
+            }
+        }
+        
+        async function listSurveys() {
+            try {
+                log('Listing all surveys...');
+                
+                const { data, error } = await supabaseClient
+                    .from('surveys')
+                    .select('id, json_config->theme->title')
+                    .order('inserted_at', { ascending: false });
+                    
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    log(`Found ${data.length} surveys:`);
+                    data.forEach(survey => {
+                        log(`- ${survey.title || 'Untitled'} (ID: ${survey.id})`);
+                    });
+                } else {
+                    log('No surveys found.');
+                }
+                
+                // Also list cohorts
+                await listCohorts();
+            } catch (error) {
+                log(`Error listing surveys: ${error.message}`);
+            }
+        }
+        
+        async function listCohorts() {
+            try {
+                log('\nListing all cohorts...');
+                
+                const { data, error } = await supabaseClient
+                    .from('cohorts')
+                    .select('id, code, survey_id');
+                    
+                if (error) throw error;
+                
+                if (data && data.length > 0) {
+                    log(`Found ${data.length} cohorts:`);
+                    data.forEach(cohort => {
+                        log(`- Code: ${cohort.code}, Survey ID: ${cohort.survey_id}`);
+                    });
+                } else {
+                    log('No cohorts found.');
+                }
+            } catch (error) {
+                log(`Error listing cohorts: ${error.message}`);
+            }
+        }
+        
+        async function updateCohorts() {
+            try {
+                log('Creating surveys and updating cohort codes...');
+                
+                // Create all three surveys
+                const surveyAId = await createSurveyA();
+                const surveyBId = await createSurveyB();
+                const surveyCId = await createSurveyC();
+                
+                if (!surveyAId || !surveyBId || !surveyCId) {
+                    throw new Error('Failed to create all surveys');
+                }
+                
+                // First check if cohorts already exist
+                const { data: existingCohorts, error: checkError } = await supabaseClient
+                    .from('cohorts')
+                    .select('id, code');
+                    
+                if (checkError) throw checkError;
+                
+                // For each code, update or create
+                const cohortUpdates = [
+                    { code: 'SRV101', survey_id: surveyAId },
+                    { code: 'SRV102', survey_id: surveyBId },
+                    { code: 'SRV103', survey_id: surveyCId }
+                ];
+                
+                for (const update of cohortUpdates) {
+                    const existingCohort = existingCohorts.find(c => c.code === update.code);
+                    
+                    if (existingCohort) {
+                        // Update existing cohort
+                        const { error: updateError } = await supabaseClient
+                            .from('cohorts')
+                            .update({ survey_id: update.survey_id })
+                            .eq('id', existingCohort.id);
+                            
+                        if (updateError) throw updateError;
+                        log(`Updated cohort ${update.code} to use survey ID: ${update.survey_id}`);
+                    } else {
+                        // Create new cohort
+                        const { error: insertError } = await supabaseClient
+                            .from('cohorts')
+                            .insert({
+                                code: update.code,
+                                label: `Test Cohort for ${update.code}`,
+                                survey_id: update.survey_id
+                            });
+                            
+                        if (insertError) throw insertError;
+                        log(`Created new cohort ${update.code} with survey ID: ${update.survey_id}`);
+                    }
+                }
+                
+                log('\nCohorts updated successfully with these mappings:');
+                log('- SRV101: Survey A (Mixed Required/Optional)');
+                log('- SRV102: Survey B (All Required)');
+                log('- SRV103: Survey C (All Optional)');
+            } catch (error) {
+                log(`Error updating cohorts: ${error.message}`);
+            }
+        }
+
+        // Add event listeners
+        document.getElementById('createSurveyA').addEventListener('click', createSurveyA);
+        document.getElementById('createSurveyB').addEventListener('click', createSurveyB);
+        document.getElementById('createSurveyC').addEventListener('click', createSurveyC);
+        document.getElementById('listSurveys').addEventListener('click', listSurveys);
+        document.getElementById('updateCohorts').addEventListener('click', updateCohorts);
+    </script>
+</body>
+</html> 
