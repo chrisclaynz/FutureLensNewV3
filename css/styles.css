@@ -21,6 +21,8 @@ html, body {
     font-family: var(--font-family);
     background-color: #f9f9f9;
     color: #333;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
 }
 
 /* Override fixed positioning for results page */
@@ -30,9 +32,11 @@ body.results-page {
 }
 
 #root {
-    height: 100%;
+    height: auto;
+    min-height: 100%;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
+    position: relative;
 }
 
 /* Survey container */
@@ -486,6 +490,33 @@ body.results-page {
         border-right: 8px solid transparent;
         border-bottom: 8px solid #333;
         bottom: -12px;
+    }
+    
+    .continuum-details {
+        padding: 10px;
+        padding-top: 60px; /* Increased from 50px to 60px for more space on mobile */
+    }
+    
+    .continuum-details h2 {
+        font-size: 20px; /* Slightly smaller font on mobile */
+        padding-top: 10px; /* Increased from 5px to 10px for more space */
+    }
+    
+    .back-button-top {
+        top: 15px;
+        left: 15px;
+        padding: 3px 10px;
+        font-size: 12px;
+    }
+    
+    .back-button {
+        font-size: 14px;
+        padding: 8px 15px;
+        margin-bottom: 15px;
+    }
+    
+    .results-actions button {
+        width: 100%;
     }
 }
 
@@ -1054,19 +1085,17 @@ button:disabled {
 /* Progress bar styles */
 .progress-container {
     width: 100%;
-    height: 15px;
-    background-color: #f1f1f1;
-    border-radius: 10px;
+    background-color: #f0f0f0;
+    border-radius: 5px;
     margin-bottom: 15px;
     overflow: hidden;
-    box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);
 }
 
 .progress-bar {
-    height: 100%;
-    background-color: #4a90e2;
-    border-radius: 10px;
-    transition: width 0.5s ease-in-out;
+    height: 8px;
+    background-color: var(--primary-color);
+    transition: width 0.3s ease;
+    border-radius: 5px;
 }
 
 /* Mobile adjustments for progress bar */
@@ -1327,6 +1356,19 @@ button:disabled {
     
     .continuum-details {
         padding: 10px;
+        padding-top: 85px; /* Increased from 70px to 85px for more space on mobile */
+    }
+    
+    .continuum-details h2 {
+        font-size: 20px; /* Slightly smaller font on mobile */
+        padding-top: 20px; /* Increased from 15px to 20px for more space */
+    }
+    
+    .back-button-top {
+        top: 15px;
+        left: 15px;
+        padding: 3px 10px;
+        font-size: 12px;
     }
     
     .back-button {
@@ -1422,6 +1464,7 @@ button:disabled {
     margin-bottom: 20px;
     text-align: center;
     font-weight: 600;
+    padding-top: 40px; /* Increased from 30px to 40px for more space */
 }
 
 .detail-scale {
@@ -1931,4 +1974,27 @@ button:disabled {
         font-size: 20px;
         margin-bottom: 25px;
     }
+}
+
+/* Hidden elements */
+.hidden {
+    display: none;
+}
+
+/* Centered text */
+.text-center {
+    text-align: center;
+}
+
+/* Message display styles */
+#error-message, #success-message {
+    display: none;
+}
+
+/* Pre-formatted code output */
+.code-output {
+    white-space: pre;
+    font-family: monospace;
+    background-color: #f0f0f0;
+    padding: 20px;
 } 

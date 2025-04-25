@@ -1,5 +1,28 @@
 import { supabase } from './client.js';
 
+// Helper function to create HTML for a continuum element
+function createContinuumElement(continuum, score, cohortAverage = null) {
+    const percentPosition = ((score.average + 2) / 4) * 100;
+    const cohortPercentPosition = cohortAverage ? ((cohortAverage + 2) / 4) * 100 : null;
+    
+    const leftLabel = continuum.labels?.left || 'Left';
+    const rightLabel = continuum.labels?.right || 'Right';
+    
+    return `
+        <div class="continuum-result">
+            <h3>${continuum.name}</h3>
+            <div class="continuum-scale">
+                <div class="continuum-left">${leftLabel}</div>
+                <div class="continuum-right">${rightLabel}</div>
+                <div class="continuum-marker" style="left: ${percentPosition}%"></div>
+            </div>
+            <div class="text-center">
+                <button class="learn-more-btn" data-continuum="${continuum.key || ''}">Learn more</button>
+            </div>
+        </div>
+    `;
+}
+
 // Results module
 export const results = {
     async init() {
@@ -163,27 +186,10 @@ export const results = {
         const continua = results.survey.continua || {};
         Object.keys(results.continuumScores).forEach(continuumKey => {
             const continuum = continua[continuumKey] || { name: continuumKey };
+            continuum.key = continuumKey; // Add the key for data-continuum attribute
             const score = results.continuumScores[continuumKey];
             
-            // Format the average score to 1 decimal place
-            const formattedAverage = score.average.toFixed(1);
-            
-            // Convert the average to a percentage position on the continuum (from -2 to +2, where -2 = 0% and +2 = 100%)
-            const percentPosition = ((score.average + 2) / 4) * 100;
-            
-            html += `
-                <div class="continuum-result">
-                    <h3>${continuum.name}</h3>
-                    <div class="continuum-scale">
-                        <div class="continuum-left">${continuum.labels?.left || 'Left'}</div>
-                        <div class="continuum-right">${continuum.labels?.right || 'Right'}</div>
-                        <div class="continuum-marker" style="left: ${percentPosition}%"></div>
-                    </div>
-                    <div style="text-align: center;">
-                        <button class="learn-more-btn" data-continuum="${continuumKey}">Learn more</button>
-                    </div>
-                </div>
-            `;
+            html += createContinuumElement(continuum, score);
         });
         
         // Close the continuum grid
@@ -320,7 +326,7 @@ export const results = {
             const response = results.responses.find(r => r.question_key === statement.id);
             return {
                 statement,
-                response
+                response: response || {}
             };
         });
         
@@ -329,25 +335,17 @@ export const results = {
         const contradictingResponses = [];
         
         statementResponses.forEach(item => {
-            if (!item.response) {
-                return; // Skip items without responses
+            if (!item.response || !item.response.likert_value) {
+                return; // Skip items without valid responses
             }
             
             // Determine if the response supports or contradicts the overall perspective
             const alignment = item.statement.alignment || 'neutral';
             const likertValue = item.response.likert_value;
             
-            // If they selected "don't understand", we'll still categorize based on other responses
-            // but mark it specially later
+            // If they selected "don't understand", mark it
             if (item.response.dont_understand) {
-                // We'll mark this in the display
                 item.dontUnderstand = true;
-                
-                // We still want to categorize it, so if there's no likert value, put it in a default category
-                if (likertValue === null || likertValue === undefined) {
-                    contradictingResponses.push(item); // Default placement if only "don't understand" selected
-                    return;
-                }
             }
             
             // Calculate if response supports the statement's alignment
@@ -361,16 +359,16 @@ export const results = {
                 contradictingResponses.push(item);
             }
         });
-
-        // Build the HTML for the detailed view with side-by-side layout
+        
+        // Build the detailed view HTML
         let detailsHtml = `
             <div class="continuum-details">
                 <button id="back-to-results-top" class="back-button-top">← Back</button>
                 <h2>Your responses to: ${continuum.name}</h2>
                 
                 <div class="continuum-scale detail-scale">
-                    <div class="continuum-left">${continuum.labels?.left || 'Left'}</div>
-                    <div class="continuum-right">${continuum.labels?.right || 'Right'}</div>
+                    <div class="continuum-left">${leftLabel}</div>
+                    <div class="continuum-right">${rightLabel}</div>
                     <div class="continuum-marker" style="left: ${percentPosition}%"></div>
                 </div>
                 
@@ -379,16 +377,11 @@ export const results = {
                 </div>
         `;
         
-        // Check if there are both supporting and contradicting responses
-        const hasBothTypes = supportingResponses.length > 0 && contradictingResponses.length > 0;
-        
-        if (hasBothTypes) {
-            // Side-by-side layout
+        // Show supporting and contradicting responses
+        if (supportingResponses.length > 0) {
             detailsHtml += `
-                <div class="responses-container">
-                    <div class="responses-column supporting-responses">
-                        <h3>Responses that support your perspective:</h3>
-                        <div class="responses-list">
+                <div class="statement-responses supporting-responses">
+                    <h3>Responses that support your perspective:</h3>
             `;
             
             supportingResponses.forEach(item => {
@@ -403,7 +396,7 @@ export const results = {
                 
                 let responseText = `You selected: ${likertText}`;
                 if (item.dontUnderstand) {
-                    responseText += `. <span class="dont-understand-note">However, you also said you didn't understand this statement.</span>`;
+                    responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
                 }
                 
                 detailsHtml += `
@@ -414,36 +407,28 @@ export const results = {
                 `;
             });
             
+            detailsHtml += `</div>`;
+        }
+        
+        if (contradictingResponses.length > 0) {
             detailsHtml += `
-                        </div>
-                    </div>
-                    
-                    <div class="responses-column contradicting-responses">
-                        <h3>Responses that contradict your perspective:</h3>
-                        <div class="responses-list">
+                <div class="statement-responses contradicting-responses">
+                    <h3>Responses that contradict your perspective:</h3>
             `;
             
             contradictingResponses.forEach(item => {
                 let likertText = "";
-                if (item.response.likert_value !== null && item.response.likert_value !== undefined) {
-                    switch(item.response.likert_value) {
-                        case 2: likertText = "Strongly Agree"; break;
-                        case 1: likertText = "Agree"; break;
-                        case -1: likertText = "Disagree"; break;
-                        case -2: likertText = "Strongly Disagree"; break;
-                        default: likertText = "No response";
-                    }
-                } else if (item.dontUnderstand) {
-                    likertText = "No selection";
+                switch(item.response.likert_value) {
+                    case 2: likertText = "Strongly Agree"; break;
+                    case 1: likertText = "Agree"; break;
+                    case -1: likertText = "Disagree"; break;
+                    case -2: likertText = "Strongly Disagree"; break;
+                    default: likertText = "No response";
                 }
                 
                 let responseText = `You selected: ${likertText}`;
                 if (item.dontUnderstand) {
-                    if (item.response.likert_value !== null && item.response.likert_value !== undefined) {
-                        responseText += `. <span class="dont-understand-note">However, you also said you didn't understand this statement.</span>`;
-                    } else {
-                        responseText = `You selected: <span class="dont-understand-note">I don't understand this statement.</span>`;
-                    }
+                    responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
                 }
                 
                 detailsHtml += `
@@ -454,84 +439,7 @@ export const results = {
                 `;
             });
             
-            detailsHtml += `
-                        </div>
-                    </div>
-                </div>
-            `;
-        } else {
-            // Single column layout when there's only one type of response
-            if (supportingResponses.length > 0) {
-                detailsHtml += `
-                    <div class="statement-responses supporting-responses">
-                        <h3>Responses that support your perspective:</h3>
-                `;
-                
-                supportingResponses.forEach(item => {
-                    let likertText = "";
-                    switch(item.response.likert_value) {
-                        case 2: likertText = "Strongly Agree"; break;
-                        case 1: likertText = "Agree"; break;
-                        case -1: likertText = "Disagree"; break;
-                        case -2: likertText = "Strongly Disagree"; break;
-                        default: likertText = "No response";
-                    }
-                    
-                    let responseText = `You selected: ${likertText}`;
-                    if (item.dontUnderstand) {
-                        responseText += `. <span class="dont-understand-note">However, you also said you didn't understand this statement.</span>`;
-                    }
-                    
-                    detailsHtml += `
-                        <div class="statement-response supporting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
-                            <p class="response-value">${responseText}</p>
-                            <p class="statement-text">${item.statement.text}</p>
-                        </div>
-                    `;
-                });
-                
-                detailsHtml += `</div>`;
-            }
-            
-            if (contradictingResponses.length > 0) {
-                detailsHtml += `
-                    <div class="statement-responses contradicting-responses">
-                        <h3>Responses that contradict your perspective:</h3>
-                `;
-                
-                contradictingResponses.forEach(item => {
-                    let likertText = "";
-                    if (item.response.likert_value !== null && item.response.likert_value !== undefined) {
-                        switch(item.response.likert_value) {
-                            case 2: likertText = "Strongly Agree"; break;
-                            case 1: likertText = "Agree"; break;
-                            case -1: likertText = "Disagree"; break;
-                            case -2: likertText = "Strongly Disagree"; break;
-                            default: likertText = "No response";
-                        }
-                    } else if (item.dontUnderstand) {
-                        likertText = "No selection";
-                    }
-                    
-                    let responseText = `You selected: ${likertText}`;
-                    if (item.dontUnderstand) {
-                        if (item.response.likert_value !== null && item.response.likert_value !== undefined) {
-                            responseText += `. <span class="dont-understand-note">However, you also said you didn't understand this statement.</span>`;
-                        } else {
-                            responseText = `You selected: <span class="dont-understand-note">I don't understand this statement.</span>`;
-                        }
-                    }
-                    
-                    detailsHtml += `
-                        <div class="statement-response contradicting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
-                            <p class="response-value">${responseText}</p>
-                            <p class="statement-text">${item.statement.text}</p>
-                        </div>
-                    `;
-                });
-                
-                detailsHtml += `</div>`;
-            }
+            detailsHtml += `</div>`;
         }
         
         // Close the HTML
@@ -543,17 +451,30 @@ export const results = {
             </div>
         `;
         
-        // Set the container HTML
+        // Set the HTML in the container
         container.innerHTML = detailsHtml;
         
-        // Add back button event listeners
+        // Add event listeners to back buttons
         const backButton = document.getElementById('back-to-results');
         const backButtonTop = document.getElementById('back-to-results-top');
         
         const handleBackClick = () => {
+            // First, reset the scroll position to ensure we start from the top
+            window.scrollTo(0, 0);
+            
+            // Then display the results
             this.displayResults(results);
-            // After returning to results view, scroll to the top of the page
-            window.scrollTo({ top: 0, behavior: 'smooth' });
+            
+            // After a short delay to ensure the DOM is updated, scroll to top again 
+            // using both modern and legacy methods for maximum compatibility
+            setTimeout(() => {
+                window.scrollTo(0, 0);
+                window.scrollTo({ top: 0, behavior: 'auto' });
+                
+                // For older browsers and iOS
+                document.body.scrollTop = 0;
+                document.documentElement.scrollTop = 0;
+            }, 10);
         };
         
         if (backButton) {

@@ -218,11 +218,7 @@ export function createSurvey(dependencies = {}) {
             });
             
             // Create progress bar HTML
-            progressHtml = `
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: ${progressPercentage}%;"></div>
-                </div>
-            `;
+            progressHtml = createProgressBar(currentRequiredQuestionNumber, totalRequiredQuestions);
         } else {
             // For optional questions, show traditional question counter
             progressHtml = `<h2 id="question">Question ${currentQuestionIndex + 1} of ${questions.length}</h2>`;
@@ -592,10 +588,10 @@ export function createSurvey(dependencies = {}) {
             }
             
             // Get survey ID from current survey, or fetch the latest survey ID
-            let surveyId = null;
-            if (surveyData && surveyData.id) {
+            let surveyId = storage.getItem('survey_id');
+            if (!surveyId && surveyData && surveyData.id) {
                 surveyId = surveyData.id;
-            } else {
+            } else if (!surveyId) {
                 // Look up the latest survey
                 const { data: surveys, error: surveyError } = await supabaseClient
                     .from('surveys')
@@ -618,28 +614,65 @@ export function createSurvey(dependencies = {}) {
                 }
             }
             
+            // Get cohort ID from storage
+            const cohortId = storage.getItem('cohort_id');
+            if (!cohortId) {
+                console.error('No cohort ID found, proceeding without it');
+            }
+            
+            // Refresh the auth session to ensure the token is valid
+            try {
+                const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
+                if (sessionError) {
+                    console.error('Error refreshing session:', sessionError);
+                    win.alert('Your session has expired. Please log in again.');
+                    win.location.href = '/';
+                    return;
+                }
+                
+                if (!sessionData.session) {
+                    win.alert('Your session has expired. Please log in again.');
+                    win.location.href = '/';
+                    return;
+                }
+            } catch (sessionError) {
+                console.error('Error refreshing auth session:', sessionError);
+            }
+            
             // Check if participant record exists, create if it doesn't
             let participantId = storage.getItem('futurelens_participant_id');
             
             if (!participantId) {
                 // Create a new participant record
-                const { data: participantData, error: participantError } = await supabaseClient
-                    .from('participants')
-                    .insert({
+                try {
+                    const insertPayload = {
                         user_id: userId,
                         survey_id: surveyId
-                    })
-                    .select('id')
-                    .single();
+                    };
                     
-                if (participantError) {
-                    console.error('Error creating participant record:', participantError);
-                    win.alert('Error submitting survey. Please try again.');
+                    if (cohortId) {
+                        insertPayload.cohort_id = cohortId;
+                    }
+                    
+                    const { data: participantData, error: participantError } = await supabaseClient
+                        .from('participants')
+                        .insert(insertPayload)
+                        .select('id')
+                        .single();
+                        
+                    if (participantError) {
+                        console.error('Error creating participant record:', participantError);
+                        win.alert('Error submitting survey. Please try again.');
+                        return;
+                    }
+                    
+                    participantId = participantData.id;
+                    storage.setItem('futurelens_participant_id', participantId);
+                } catch (participantError) {
+                    console.error('Exception creating participant record:', participantError);
+                    win.alert('Error creating participant record. Please try again.');
                     return;
                 }
-                
-                participantId = participantData.id;
-                storage.setItem('futurelens_participant_id', participantId);
             }
             
             // Submit all answers to Supabase in one batch operation
@@ -870,6 +903,23 @@ export function createSurvey(dependencies = {}) {
         }
     }
 
+    function updateProgressBar(current, total) {
+        const progressPercentage = (current / total) * 100;
+        const progressBar = document.querySelector('.progress-bar');
+        if (progressBar) {
+            progressBar.style.width = `${progressPercentage}%`;
+        }
+    }
+
+    function createProgressBar(current, total) {
+        const progressPercentage = (current / total) * 100;
+        return `
+            <div class="progress-container">
+                <div class="progress-bar" style="width: ${progressPercentage}%;"></div>
+            </div>
+        `;
+    }
+
     async function init() {
         console.log('Survey module initialized');
         
@@ -881,12 +931,10 @@ export function createSurvey(dependencies = {}) {
             return;
         }
         
-        // Check if the user has gone through the welcome page
-        const hasVisitedWelcome = storage.getItem('visited_welcome_page');
-        if (!hasVisitedWelcome) {
-            console.log('User has not visited the welcome page, redirecting...');
-            win.location.href = '/survey-welcome.html';
-            return;
+        // Set flag to indicate the user has visited the welcome page
+        // This avoids redirecting back to welcome page if we came from there
+        if (win.document.referrer.includes('survey-welcome.html')) {
+            storage.setItem('visited_welcome_page', 'true');
         }
         
         // Check if we have a saved survey in progress

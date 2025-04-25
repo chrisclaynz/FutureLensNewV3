@@ -235,6 +235,55 @@ CopyEdit
 
 ---
 
+### **Prompt 10: Redirect to Results After Login for Completed Surveys**
+
+vbnet  
+CopyEdit  
+`Enhance the application to redirect users to their results page when they login if they've already completed a survey:`
+
+`1. In auth.js, modify the handleLogin function to:`  
+   `- After successful authentication but before redirecting to survey-code.html`  
+   `- Add an async function checkCompletedSurveys(userId) that:`  
+     `- Uses the user's ID to query the participants table with proper RLS considerations`  
+     `- Joins with the responses table to determine if the user has any completed surveys`  
+     `- Define "completed" as having responses for all required questions in a survey`  
+     `- Handle the case where no participants records exist without error`
+
+`2. Add a user selection screen when multiple completed surveys exist:`  
+   `- If only one completed survey, redirect directly to results.html with the appropriate participant_id`  
+   `- If multiple completed surveys, display a selection screen showing survey titles and dates`  
+   `- Allow users to choose which results to view or to start a new survey`
+
+`3. Standardize participant ID storage:`  
+   `- Ensure consistent use of either 'participant_id' or 'futurelens_participant_id' in localStorage` 
+   `- Update all references throughout the codebase to use the standardized key`  
+   `- Document this decision in code comments for future developers`
+
+`4. Optimize database queries and respect RLS:`  
+   `- Ensure all queries work within existing RLS policies`  
+   `- Use efficient query patterns that don't degrade login performance`  
+   `- Include proper error handling for cases where RLS might block access`
+
+`5. Update the results.js module to:`  
+   `- Accept participant_id as a URL parameter (e.g., results.html?participant_id=123)`  
+   `- Gracefully handle cases where results might be incomplete`  
+   `- Add clear navigation options to return to the survey selection or take a new survey`
+
+`6. Ensure compatibility with the existing session timeout mechanism:`  
+   `- Make sure the new flows respect the 60-minute inactivity timer`  
+   `- Maintain proper token refresh during redirects and result viewing`  
+   `- Test thoroughly with various timeout scenarios`
+
+`Write tests that verify:`  
+   `- Users with completed surveys are correctly redirected`  
+   `- Users with no completed surveys follow the original flow`  
+   `- The selection screen works correctly for users with multiple surveys`  
+   `- All functionality respects the RLS constraints in the database`
+
+`Return the updated auth.js, app.js, and results.js files, focusing on making this feature resilient to the identified potential issues.`
+
+---
+
 ## **Post-MVP Features**
 
 Below is the same expansion roadmap as before, which you can tackle **after** delivering a stable MVP. These are not prompted in detail, just keep them in mind:

@@ -12,7 +12,7 @@
             <h1>FutureLens</h1>
             
             <!-- Error Message -->
-            <div id="error-message" class="message error" style="display: none;"></div>
+            <div id="error-message" class="message error"></div>
             
             <!-- Survey Code Form -->
             <form id="surveyCodeForm" class="survey-code-form">
@@ -28,6 +28,14 @@
     </div>
 
     <!-- Load only the necessary scripts -->
+    <script type="module">
+        import { auth } from './src/auth.js';
+        
+        // Initialize session timeout
+        if (typeof auth.initSessionTimeout === 'function') {
+            auth.initSessionTimeout();
+        }
+    </script>
     <script type="module" src="src/client.js"></script>
     <script type="module" src="src/app.js"></script>
     <script type="module" src="src/auth.js"></script>

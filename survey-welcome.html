@@ -13,6 +13,7 @@
             background-color: white;
             border-radius: 8px;
             box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+            overflow-y: auto; /* Enable scrolling within container */
         }
         
         .welcome-container h1 {
@@ -91,10 +92,24 @@
         
         /* Mobile styles */
         @media (max-width: 768px) {
+            body, html {
+                height: 100%;
+                overflow-y: auto;
+                -webkit-overflow-scrolling: touch;
+            }
+            
+            #root {
+                height: auto;
+                min-height: 100%;
+                overflow-y: visible;
+            }
+            
             .welcome-container {
                 margin: 15px auto;
                 padding: 20px;
                 width: 90%;
+                height: auto;
+                overflow-y: visible;
             }
             
             .begin-button {
@@ -106,8 +121,6 @@
 <body>
     <div id="root">
         <div class="welcome-container">
-            <h1>Welcome to FutureLens</h1>
-            
             <div id="survey-welcome-content">
                 <div id="survey-title">Loading survey...</div>
                 
@@ -117,7 +130,7 @@
                     <div class="instruction-item">
                         <div class="instruction-number">1</div>
                         <div class="instruction-text">
-                            You'll be presented with a series of statements. For each statement, select how much you agree or disagree.
+                            You'll be presented with a series of statements.
                         </div>
                     </div>
                     
@@ -160,7 +173,13 @@
     <!-- Load the necessary scripts -->
     <script type="module" src="src/client.js"></script>
     <script type="module">
+        import { auth } from './src/auth.js';
         import { supabase } from './src/client.js';
+        
+        // Initialize session timeout
+        if (typeof auth.initSessionTimeout === 'function') {
+            auth.initSessionTimeout();
+        }
         
         document.addEventListener('DOMContentLoaded', async function() {
             try {
@@ -193,21 +212,32 @@
                 // Display survey title and instructions
                 if (survey && survey.json_config && survey.json_config.theme) {
                     const titleElement = document.getElementById('survey-title');
+                    let instructions = survey.json_config.theme.instructions || 'This survey will help you understand your thinking patterns and preferences.';
+                    
+                    // Remove the "Select how much you agree..." text if present
+                    instructions = instructions.replace(/Select how much you agree or disagree with each statement\.?/g, '');
+                    instructions = instructions.replace(/Select how much you agree or disagree\.?/g, '');
+                    // Clean up any double spaces left from removal
+                    instructions = instructions.replace(/\s+/g, ' ').trim();
+                    
                     titleElement.innerHTML = `
-                        <h2>${survey.json_config.theme.title || 'FutureLens Survey'}</h2>
-                        <p>${survey.json_config.theme.instructions || 'This survey will help you understand your thinking patterns and preferences.'}</p>
+                        <h2>Welcome to ${survey.json_config.theme.title || 'FutureLens Survey'}</h2>
+                        <p>${instructions}</p>
                     `;
                 }
                 
                 // Add event listener to begin button
                 const beginButton = document.getElementById('begin-survey-button');
-                beginButton.addEventListener('click', function() {
-                    // Set flag that user has visited the welcome page
-                    localStorage.setItem('visited_welcome_page', 'true');
-                    window.location.href = '/survey.html';
-                });
+                if (beginButton) {
+                    beginButton.addEventListener('click', function() {
+                        // Set flag that user has visited the welcome page
+                        localStorage.setItem('visited_welcome_page', 'true');
+                        window.location.href = '/survey.html';
+                    });
+                }
             } catch (error) {
                 console.error('Error initializing welcome page:', error);
+                window.location.href = '/';
             }
         });
     </script>

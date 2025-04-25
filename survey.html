@@ -14,13 +14,16 @@
             padding: 0;
             overflow-y: auto;
             overflow-x: hidden;
+            -webkit-overflow-scrolling: touch;
         }
         
         #root {
-            height: 100%;
+            height: auto;
+            min-height: 100vh;
             overflow-y: auto;
             -webkit-overflow-scrolling: touch;
             padding: 0 10px;
+            position: relative;
         }
         
         /* Make the Next button more prominent */
@@ -150,17 +153,26 @@
         
         /* Increase space between question text and Likert options */
         .instructions {
-            margin-top: 20px !important; /* Increased from 5px to create 15px more space */
-            margin-bottom: 5px !important;
+            display: none; /* Hide the instructions text */
         }
         
         /* Mobile-specific styles */
         @media (max-width: 480px) {
+            body {
+                overflow-y: auto !important;
+                -webkit-overflow-scrolling: touch !important;
+                position: relative !important;
+                height: auto !important;
+                min-height: 100vh !important;
+            }
+            
             .survey-container {
                 padding: 0 !important;
-                height: 100vh !important;
+                height: auto !important;
+                min-height: 100vh !important;
                 display: flex !important;
                 flex-direction: column !important;
+                overflow-y: auto !important;
             }
             
             /* Top section for question */
@@ -188,6 +200,7 @@
                 min-height: 55vh !important;
                 display: flex !important;
                 flex-direction: column !important;
+                overflow-y: auto !important;
             }
             
             /* Navigation buttons at the very bottom */
@@ -201,8 +214,9 @@
             }
             
             /* Fix for body */
-            body {
-                overflow: hidden !important;
+            html {
+                overflow-y: auto !important;
+                height: auto !important;
             }
         }
     </style>
@@ -221,7 +235,6 @@
                     
                     <div class="options-container">
                         <div class="likert-container">
-                            <p class="instructions">Please select one of the options below:</p>
                             <div id="likertScale" class="likert-scale">
                                 <div class="likert-option">
                                     <input type="radio" name="likert" id="likert-strong-disagree" value="-2">
@@ -250,9 +263,9 @@
                             <!-- Add wrapper for precise positioning -->
                             <div class="navigation-wrapper">
                                 <div class="navigation-buttons">
-                                    <button id="prevButton" class="nav-button">Previous</button>
-                                    <button id="skipButton" class="nav-button" style="display: none;">Skip (Optional)</button>
-                                    <button id="nextButton" class="nav-button" disabled>Next</button>
+                                    <button id="prevButton" class="nav-button prev-button">Previous</button>
+                                    <button id="skipButton" class="nav-button hidden">Skip (Optional)</button>
+                                    <button id="nextButton" class="nav-button next-button">Next</button>
                                 </div>
                             </div>
                         </div>
@@ -268,6 +281,11 @@
         import { supabase } from './src/client.js';
         import { createSurvey } from './src/survey.js';
         import { auth } from './src/auth.js';
+        
+        // Initialize session timeout
+        if (typeof auth.initSessionTimeout === 'function') {
+            auth.initSessionTimeout();
+        }
         
         // Fix viewport height issues on mobile
         function setVH() {

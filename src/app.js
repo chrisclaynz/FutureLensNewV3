@@ -1,4 +1,5 @@
 import { supabase } from './client.js';
+import { auth } from './auth.js';
 
 // Only import survey if we're on the survey page
 const isSurveyPage = window.location.pathname.includes('survey.html');
@@ -14,12 +15,18 @@ export function createApp(dependencies = {}) {
         supabaseClient = supabase,
         window: win = window,
         document: doc = document,
-        storage = localStorage
+        storage = localStorage,
+        authModule = auth
     } = dependencies;
 
     let survey;
 
     async function init() {
+        // Initialize session timeout handling for all pages
+        if (typeof authModule.initSessionTimeout === 'function') {
+            authModule.initSessionTimeout();
+        }
+        
         // Set up event listeners for DOMContentLoaded only if it hasn't fired yet
         if (doc.readyState === 'loading') {
             doc.addEventListener('DOMContentLoaded', handleDOMContentLoaded);
