@@ -44,24 +44,49 @@ export function createApp(dependencies = {}) {
             const isSurveyCodePage = win.location.pathname.includes('survey-code.html');
             const isWelcomePage = win.location.pathname.includes('survey-welcome.html');
             const isResultsPage = win.location.pathname.includes('results.html');
+            const isDebugPage = win.location.pathname.includes('debug-participants.html');
             
             // Get the current session
             const { data: { session }, error } = await supabaseClient.auth.getSession();
             
             if (error) throw error;
             
+            // Special handling for results page with URL parameter
+            if (isResultsPage) {
+                const urlParams = new URLSearchParams(win.location.search);
+                const participantId = urlParams.get('participant_id');
+                
+                // If we have a participant_id parameter, we want to allow viewing results
+                // even if redirected here directly (as long as user is authenticated)
+                if (participantId && session) {
+                    // Store the participant ID in localStorage for consistency
+                    storage.setItem('futurelens_participant_id', participantId);
+                    return; // Skip standard auth redirect flow
+                }
+            }
+            
+            // Special handling for debug page - always allow access with auth
+            if (isDebugPage && session) {
+                return; // Skip standard auth redirect flow for debug page
+            }
+            
             // Handle authentication flow
-            if (!session && !isAuthPage) {
-                // If not logged in and not on auth page, redirect to auth page
+            if (!session && !isAuthPage && !isDebugPage) {
+                // If not logged in and not on auth page or debug page, redirect to auth page
                 win.location.href = '/';
                 return;
             } else if (session && isAuthPage) {
-                // If logged in and on auth page, redirect to survey code page
-                // Store user ID in localStorage for the survey
+                // If logged in and on auth page, check for completed surveys
+                // Import auth module dynamically to avoid potential circular dependencies
+                const { auth } = await import('./auth.js');
+                
                 if (session.user) {
+                    // Store user ID in localStorage for the survey
                     storage.setItem('participant_id', session.user.id);
+                    
+                    // Check for completed surveys
+                    await auth.checkCompletedSurveys(session.user.id);
                 }
-                win.location.href = '/survey-code.html';
                 return;
             }
             

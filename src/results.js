@@ -32,7 +32,25 @@ export const results = {
 
     async loadResults() {
         try {
-            const participantId = localStorage.getItem('futurelens_participant_id');
+            // Check for participant_id in URL params first
+            const urlParams = new URLSearchParams(window.location.search);
+            let participantId = urlParams.get('participant_id');
+            
+            // If not in URL, try localStorage
+            if (!participantId) {
+                participantId = localStorage.getItem('futurelens_participant_id');
+            }
+            
+            // If still not found, check legacy key
+            if (!participantId) {
+                participantId = localStorage.getItem('participant_id');
+                
+                // If found in legacy key, migrate to standardized key
+                if (participantId) {
+                    localStorage.setItem('futurelens_participant_id', participantId);
+                }
+            }
+            
             if (!participantId) {
                 console.error('No participant ID found');
                 window.location.href = '/';
@@ -212,6 +230,7 @@ export const results = {
             </div>
             <div class="results-actions">
                 <button id="take-another-survey">Take Another Survey</button>
+                <button id="view-other-results">View Other Results</button>
                 <button id="logout">Logout</button>
             </div>
         `;
@@ -221,12 +240,34 @@ export const results = {
         
         // Add event listeners to buttons
         const takeAnotherButton = document.getElementById('take-another-survey');
+        const viewOtherResultsButton = document.getElementById('view-other-results');
         const logoutButton = document.getElementById('logout');
         const learnMoreButtons = document.querySelectorAll('.learn-more-btn');
         
         if (takeAnotherButton) {
             takeAnotherButton.addEventListener('click', () => {
                 window.location.href = '/survey-code.html';
+            });
+        }
+        
+        if (viewOtherResultsButton) {
+            viewOtherResultsButton.addEventListener('click', async () => {
+                try {
+                    // Get the current user session
+                    const { data: { session } } = await supabase.auth.getSession();
+                    if (session && session.user) {
+                        // Call checkCompletedSurveys to show the selection screen
+                        // We need to dynamically import auth to avoid circular dependencies
+                        const authModule = await import('./auth.js');
+                        authModule.auth.checkCompletedSurveys(session.user.id);
+                    } else {
+                        window.location.href = '/';
+                    }
+                } catch (error) {
+                    console.error('Error fetching session:', error);
+                    alert('Error accessing your survey results. Please log in again.');
+                    window.location.href = '/';
+                }
             });
         }
         

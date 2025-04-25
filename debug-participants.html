@@ -1,0 +1,476 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Debug Participant Records</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+            line-height: 1.6;
+        }
+        pre {
+            background-color: #f5f5f5;
+            padding: 15px;
+            border-radius: 5px;
+            overflow-x: auto;
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        .section {
+            margin-bottom: 30px;
+            padding: 20px;
+            border: 1px solid #ddd;
+            border-radius: 5px;
+        }
+        button {
+            padding: 10px 15px;
+            background-color: #4a86e8;
+            color: white;
+            border: none;
+            border-radius: 5px;
+            cursor: pointer;
+            margin-right: 10px;
+            margin-bottom: 20px;
+        }
+        button:hover {
+            background-color: #3a76d8;
+        }
+        .loading {
+            display: none;
+            margin: 10px 0;
+        }
+        h3 {
+            margin-top: 0;
+        }
+        .completion-status {
+            font-weight: bold;
+            margin-top: 10px;
+        }
+        .complete {
+            color: green;
+        }
+        .incomplete {
+            color: red;
+        }
+        .nav-link {
+            text-decoration: none;
+            padding: 8px 16px;
+            background-color: #4a86e8;
+            color: white;
+            border-radius: 4px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Debug Participant Records</h1>
+        
+        <div class="section">
+            <h2>Current User Session</h2>
+            <button id="checkSession">Check Current Session</button>
+            <div class="loading" id="sessionLoading">Loading...</div>
+            <pre id="sessionOutput">Click "Check Current Session" to see your current auth session</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Participant Records</h2>
+            <button id="fetchParticipants">Fetch All Participants</button>
+            <button id="fetchUserParticipants">Fetch Current User's Participants</button>
+            <div class="loading" id="participantsLoading">Loading...</div>
+            <pre id="participantsOutput">Click "Fetch Participants" to see participant records</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Responses</h2>
+            <button id="fetchResponses">Fetch All Responses</button>
+            <div class="loading" id="responsesLoading">Loading...</div>
+            <pre id="responsesOutput">Click "Fetch Responses" to see response records</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Survey Completion Check</h2>
+            <button id="checkCompletion">Check Survey Completion</button>
+            <div class="loading" id="completionLoading">Loading...</div>
+            <div id="completionOutput">
+                <p>Click "Check Survey Completion" to verify if your surveys are considered complete</p>
+            </div>
+        </div>
+        
+        <div class="section">
+            <h2>Test Redirect on Login</h2>
+            <button id="testLoginRedirect">Test Login Redirect</button>
+            <div class="loading" id="redirectLoading">Loading...</div>
+            <pre id="redirectOutput">Click "Test Login Redirect" to manually run the checkCompletedSurveys function</pre>
+        </div>
+        
+        <div class="section">
+            <h2>Navigation</h2>
+            <div style="display: flex; gap: 10px;">
+                <a href="/" class="nav-link">Login Page</a>
+                <a href="/survey-code.html" class="nav-link">Survey Code Page</a>
+                <a href="/results.html" class="nav-link">Results Page</a>
+            </div>
+        </div>
+    </div>
+
+    <script type="module">
+        import { supabase } from './src/client.js';
+        import { auth } from './src/auth.js';
+        
+        // Element references
+        const checkSessionBtn = document.getElementById('checkSession');
+        const fetchParticipantsBtn = document.getElementById('fetchParticipants');
+        const fetchUserParticipantsBtn = document.getElementById('fetchUserParticipants');
+        const fetchResponsesBtn = document.getElementById('fetchResponses');
+        const checkCompletionBtn = document.getElementById('checkCompletion');
+        const testLoginRedirectBtn = document.getElementById('testLoginRedirect');
+        
+        const sessionOutput = document.getElementById('sessionOutput');
+        const participantsOutput = document.getElementById('participantsOutput');
+        const responsesOutput = document.getElementById('responsesOutput');
+        const completionOutput = document.getElementById('completionOutput');
+        const redirectOutput = document.getElementById('redirectOutput');
+        
+        const sessionLoading = document.getElementById('sessionLoading');
+        const participantsLoading = document.getElementById('participantsLoading');
+        const responsesLoading = document.getElementById('responsesLoading');
+        const completionLoading = document.getElementById('completionLoading');
+        const redirectLoading = document.getElementById('redirectLoading');
+        
+        // Add CSS for nav links
+        document.querySelectorAll('.nav-link').forEach(link => {
+            link.style.textDecoration = 'none';
+            link.style.padding = '8px 16px';
+            link.style.backgroundColor = '#4a86e8';
+            link.style.color = 'white';
+            link.style.borderRadius = '4px';
+            link.style.fontWeight = 'bold';
+        });
+        
+        // Helper function to format JSON
+        function formatJSON(obj) {
+            return JSON.stringify(obj, null, 2);
+        }
+        
+        // Check session
+        checkSessionBtn.addEventListener('click', async () => {
+            sessionLoading.style.display = 'block';
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                
+                if (error) {
+                    sessionOutput.textContent = 'Error fetching session: ' + error.message;
+                    return;
+                }
+                
+                if (!session) {
+                    sessionOutput.textContent = 'No active session. Please log in.';
+                    return;
+                }
+                
+                // Display just the important parts of the session
+                const sessionInfo = {
+                    user: {
+                        id: session.user.id,
+                        email: session.user.email,
+                        created_at: session.user.created_at
+                    },
+                    expires_at: session.expires_at,
+                    localStorage: {
+                        participant_id: localStorage.getItem('participant_id'),
+                        futurelens_participant_id: localStorage.getItem('futurelens_participant_id'),
+                        survey_id: localStorage.getItem('survey_id'),
+                        cohort_id: localStorage.getItem('cohort_id')
+                    }
+                };
+                
+                sessionOutput.textContent = formatJSON(sessionInfo);
+            } catch (error) {
+                sessionOutput.textContent = 'Error: ' + error.message;
+            } finally {
+                sessionLoading.style.display = 'none';
+            }
+        });
+        
+        // Fetch all participants
+        fetchParticipantsBtn.addEventListener('click', async () => {
+            participantsLoading.style.display = 'block';
+            try {
+                const { data, error } = await supabase
+                    .from('participants')
+                    .select('*');
+                
+                if (error) {
+                    participantsOutput.textContent = 'Error fetching participants: ' + error.message;
+                    return;
+                }
+                
+                participantsOutput.textContent = formatJSON(data);
+            } catch (error) {
+                participantsOutput.textContent = 'Error: ' + error.message;
+            } finally {
+                participantsLoading.style.display = 'none';
+            }
+        });
+        
+        // Fetch current user's participants
+        fetchUserParticipantsBtn.addEventListener('click', async () => {
+            participantsLoading.style.display = 'block';
+            try {
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError || !session) {
+                    participantsOutput.textContent = 'No active session. Please log in.';
+                    return;
+                }
+                
+                const userId = session.user.id;
+                
+                const { data, error } = await supabase
+                    .from('participants')
+                    .select('*')
+                    .eq('user_id', userId);
+                
+                if (error) {
+                    participantsOutput.textContent = 'Error fetching user participants: ' + error.message;
+                    return;
+                }
+                
+                participantsOutput.textContent = formatJSON(data);
+            } catch (error) {
+                participantsOutput.textContent = 'Error: ' + error.message;
+            } finally {
+                participantsLoading.style.display = 'none';
+            }
+        });
+        
+        // Fetch responses
+        fetchResponsesBtn.addEventListener('click', async () => {
+            responsesLoading.style.display = 'block';
+            try {
+                const { data, error } = await supabase
+                    .from('responses')
+                    .select('*');
+                
+                if (error) {
+                    responsesOutput.textContent = 'Error fetching responses: ' + error.message;
+                    return;
+                }
+                
+                responsesOutput.textContent = formatJSON(data);
+            } catch (error) {
+                responsesOutput.textContent = 'Error: ' + error.message;
+            } finally {
+                responsesLoading.style.display = 'none';
+            }
+        });
+        
+        // Check survey completion
+        checkCompletionBtn.addEventListener('click', async () => {
+            completionLoading.style.display = 'block';
+            completionOutput.innerHTML = '<p>Checking survey completion status...</p>';
+            
+            try {
+                // Get current user
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError || !session) {
+                    completionOutput.innerHTML = '<p>No active session. Please log in.</p>';
+                    return;
+                }
+                
+                const userId = session.user.id;
+                
+                // Get user's participants
+                const { data: participants, error: participantsError } = await supabase
+                    .from('participants')
+                    .select('id, survey_id, cohort_id, inserted_at')
+                    .eq('user_id', userId);
+                
+                if (participantsError) {
+                    completionOutput.innerHTML = `<p>Error fetching participants: ${participantsError.message}</p>`;
+                    return;
+                }
+                
+                if (!participants || participants.length === 0) {
+                    completionOutput.innerHTML = '<p>No participant records found for this user.</p>';
+                    return;
+                }
+                
+                let resultsHtml = '<h3>Survey Completion Results:</h3>';
+                
+                // Check each participant record
+                for (const participant of participants) {
+                    // Get the survey
+                    const { data: survey, error: surveyError } = await supabase
+                        .from('surveys')
+                        .select('id, json_config')
+                        .eq('id', participant.survey_id)
+                        .single();
+                    
+                    if (surveyError) {
+                        resultsHtml += `<p>Error fetching survey ${participant.survey_id}: ${surveyError.message}</p>`;
+                        continue;
+                    }
+                    
+                    // Get responses for this participant
+                    const { data: responses, error: responsesError } = await supabase
+                        .from('responses')
+                        .select('id, question_key, likert_value, dont_understand')
+                        .eq('participant_id', participant.id);
+                    
+                    if (responsesError) {
+                        resultsHtml += `<p>Error fetching responses for participant ${participant.id}: ${responsesError.message}</p>`;
+                        continue;
+                    }
+                    
+                    // Calculate completion status
+                    const surveyConfig = survey.json_config;
+                    const statements = surveyConfig.statements || [];
+                    const requiredStatements = statements.filter(s => s.required !== false);
+                    
+                    const respondedQuestionKeys = responses.map(r => r.question_key);
+                    
+                    // Use the same logic as in auth.js
+                    let isComplete = false;
+                    
+                    if (responses && responses.length > 0) {
+                        if (requiredStatements.length > 0) {
+                            // Either check that all required questions are answered
+                            const allRequiredAnswered = requiredStatements.every(s => 
+                                respondedQuestionKeys.includes(s.id)
+                            );
+                            
+                            // Or that there are at least as many responses as required questions
+                            // (this is a fallback in case question IDs don't match exactly)
+                            const enoughResponses = responses.length >= requiredStatements.length;
+                            
+                            isComplete = allRequiredAnswered || enoughResponses;
+                        } else {
+                            // If no required questions, as long as there are responses, it's complete
+                            isComplete = true;
+                        }
+                    }
+                    
+                    // Format creation date
+                    const createdDate = new Date(participant.inserted_at).toLocaleString();
+                    
+                    // Add to results
+                    resultsHtml += `
+                        <div class="section">
+                            <h3>Survey: ${surveyConfig.theme?.title || `Survey ${participant.survey_id}`}</h3>
+                            <p><strong>Participant ID:</strong> ${participant.id}</p>
+                            <p><strong>Created:</strong> ${createdDate}</p>
+                            <p><strong>Required Questions:</strong> ${requiredStatements.length}</p>
+                            <p><strong>Responses Submitted:</strong> ${responses.length}</p>
+                            <p><strong>Responded Questions:</strong> ${respondedQuestionKeys.length}</p>
+                            <div class="completion-status ${isComplete ? 'complete' : 'incomplete'}">
+                                Status: ${isComplete ? 'COMPLETE' : 'INCOMPLETE'}
+                            </div>
+                    `;
+                    
+                    if (!isComplete) {
+                        resultsHtml += `
+                            <div>
+                                <h4>Missing Responses for:</h4>
+                                <ul>
+                        `;
+                        
+                        // Find missing responses
+                        const missingResponses = requiredStatements.filter(s => 
+                            !respondedQuestionKeys.includes(s.id)
+                        );
+                        
+                        missingResponses.forEach(statement => {
+                            resultsHtml += `<li>${statement.id}: ${statement.text}</li>`;
+                        });
+                        
+                        resultsHtml += `
+                                </ul>
+                            </div>
+                        `;
+                    }
+                    
+                    resultsHtml += `</div>`;
+                }
+                
+                completionOutput.innerHTML = resultsHtml;
+            } catch (error) {
+                completionOutput.innerHTML = `<p>Error: ${error.message}</p>`;
+            } finally {
+                completionLoading.style.display = 'none';
+            }
+        });
+        
+        // Test Login Redirect
+        testLoginRedirectBtn.addEventListener('click', async () => {
+            redirectLoading.style.display = 'block';
+            redirectOutput.textContent = 'Testing login redirect...';
+            
+            try {
+                // Get current user
+                const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+                
+                if (sessionError) {
+                    redirectOutput.textContent = 'Error fetching session: ' + sessionError.message;
+                    return;
+                }
+                
+                if (!session) {
+                    redirectOutput.textContent = 'No active session. Please log in first.';
+                    return;
+                }
+                
+                const userId = session.user.id;
+                
+                // Clear localStorage except for user ID to simulate a fresh login
+                const participantId = localStorage.getItem('participant_id');
+                localStorage.clear();
+                localStorage.setItem('participant_id', participantId);
+                
+                // Call checkCompletedSurveys directly
+                try {
+                    // Override window.location to prevent actual redirection
+                    const originalLocation = window.location;
+                    let redirectUrl = null;
+                    
+                    Object.defineProperty(window, 'location', {
+                        configurable: true,
+                        get: function() { return originalLocation; },
+                        set: function(url) { 
+                            console.log('Redirect attempted to:', url);
+                            redirectUrl = url;
+                            return originalLocation;
+                        }
+                    });
+                    
+                    // Call the function with debug logging
+                    console.log('Calling checkCompletedSurveys with userId:', userId);
+                    await auth.checkCompletedSurveys(userId);
+                    
+                    // Restore original location
+                    window.location = originalLocation;
+                    
+                    if (redirectUrl) {
+                        redirectOutput.textContent = `Redirect attempted to: ${redirectUrl}\n\nThis indicates what would happen on a new login.`;
+                    } else {
+                        redirectOutput.textContent = 'No redirect was attempted. This is unexpected.';
+                    }
+                } catch (error) {
+                    console.error('Error during test:', error);
+                    redirectOutput.textContent = 'Error during test: ' + error.message;
+                }
+            } catch (error) {
+                redirectOutput.textContent = 'Error: ' + error.message;
+            } finally {
+                redirectLoading.style.display = 'none';
+            }
+        });
+    </script>
+</body>
+</html> 

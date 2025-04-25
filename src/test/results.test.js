@@ -275,4 +275,160 @@ describe('Results Module', () => {
             await expect(results.calculateScores('participant-123')).rejects.toThrow('No responses found');
         });
     });
+
+    // Add tests for URL parameter handling
+    describe('results loadResults with URL parameters', () => {
+        beforeEach(() => {
+            // Clear localStorage before each test
+            localStorage.clear();
+            
+            // Mock window.location to include URL parameters
+            delete window.location;
+            window.location = {
+                href: '',
+                search: '?participant_id=test-participant-id'
+            };
+            
+            // Create URLSearchParams mock
+            global.URLSearchParams = jest.fn().mockImplementation(() => {
+                return {
+                    get: jest.fn().mockImplementation((param) => {
+                        if (param === 'participant_id') {
+                            return 'test-participant-id';
+                        }
+                        return null;
+                    })
+                };
+            });
+        });
+        
+        test('should load participant ID from URL parameters first', async () => {
+            // Setup mock supabase methods for calculateScores
+            global.supabase.from.mockImplementation((table) => {
+                if (table === 'participants') {
+                    return {
+                        select: jest.fn().mockReturnThis(),
+                        eq: jest.fn().mockReturnThis(),
+                        single: jest.fn().mockReturnValue({
+                            data: { 
+                                id: 'test-participant-id', 
+                                user_id: 'test-user', 
+                                survey_id: 'test-survey',
+                                cohort_id: 'test-cohort'
+                            },
+                            error: null
+                        })
+                    };
+                } else if (table === 'surveys') {
+                    return {
+                        select: jest.fn().mockReturnThis(),
+                        eq: jest.fn().mockReturnThis(),
+                        single: jest.fn().mockReturnValue({
+                            data: {
+                                id: 'test-survey',
+                                json_config: {
+                                    continua: {},
+                                    statements: []
+                                }
+                            },
+                            error: null
+                        })
+                    };
+                } else if (table === 'responses') {
+                    return {
+                        select: jest.fn().mockReturnThis(),
+                        eq: jest.fn().mockReturnValue({
+                            data: [],
+                            error: null
+                        })
+                    };
+                }
+                return {
+                    select: jest.fn().mockReturnThis(),
+                    eq: jest.fn().mockReturnThis()
+                };
+            });
+            
+            // Define calculate scores mock to avoid full implementation
+            results.calculateScores = jest.fn().mockResolvedValue({
+                participant: {},
+                survey: { continua: {} },
+                continuumScores: {},
+                responses: []
+            });
+            
+            // Define display results mock
+            results.displayResults = jest.fn();
+            
+            // Call loadResults
+            await results.loadResults();
+            
+            // Verify calculateScores was called with the URL parameter
+            expect(results.calculateScores).toHaveBeenCalledWith('test-participant-id');
+            
+            // Verify the value was also stored in localStorage for consistency
+            expect(localStorage.getItem('futurelens_participant_id')).toBe('test-participant-id');
+        });
+        
+        test('should fall back to localStorage if URL param is not present', async () => {
+            // Remove URL parameter
+            global.URLSearchParams = jest.fn().mockImplementation(() => {
+                return {
+                    get: jest.fn().mockReturnValue(null)
+                };
+            });
+            
+            // Set participant ID in localStorage
+            localStorage.setItem('futurelens_participant_id', 'localStorage-participant-id');
+            
+            // Define calculate scores mock to avoid full implementation
+            results.calculateScores = jest.fn().mockResolvedValue({
+                participant: {},
+                survey: { continua: {} },
+                continuumScores: {},
+                responses: []
+            });
+            
+            // Define display results mock
+            results.displayResults = jest.fn();
+            
+            // Call loadResults
+            await results.loadResults();
+            
+            // Verify calculateScores was called with the localStorage value
+            expect(results.calculateScores).toHaveBeenCalledWith('localStorage-participant-id');
+        });
+        
+        test('should migrate from legacy participant_id if needed', async () => {
+            // Remove URL parameter
+            global.URLSearchParams = jest.fn().mockImplementation(() => {
+                return {
+                    get: jest.fn().mockReturnValue(null)
+                };
+            });
+            
+            // Store only legacy participant ID
+            localStorage.setItem('participant_id', 'legacy-participant-id');
+            
+            // Define calculate scores mock to avoid full implementation
+            results.calculateScores = jest.fn().mockResolvedValue({
+                participant: {},
+                survey: { continua: {} },
+                continuumScores: {},
+                responses: []
+            });
+            
+            // Define display results mock
+            results.displayResults = jest.fn();
+            
+            // Call loadResults
+            await results.loadResults();
+            
+            // Verify calculateScores was called with the legacy ID
+            expect(results.calculateScores).toHaveBeenCalledWith('legacy-participant-id');
+            
+            // Verify it was migrated to the standardized key
+            expect(localStorage.getItem('futurelens_participant_id')).toBe('legacy-participant-id');
+        });
+    });
 }); 

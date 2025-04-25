@@ -1997,4 +1997,134 @@ button:disabled {
     font-family: monospace;
     background-color: #f0f0f0;
     padding: 20px;
+}
+
+/* Survey Selection Styles */
+.survey-selection-container {
+    max-width: 800px;
+    margin: 0 auto;
+    padding: 2rem;
+}
+
+.completed-surveys-list {
+    margin: 2rem 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.completed-survey-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 1.2rem;
+    background-color: #f9f9f9;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    transition: transform 0.2s, box-shadow 0.2s;
+}
+
+.completed-survey-item:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.survey-info {
+    flex: 1;
+}
+
+.survey-info h3 {
+    margin: 0 0 0.5rem 0;
+    font-size: 1.2rem;
+    color: #333;
+}
+
+.survey-info p {
+    margin: 0;
+    color: #666;
+    font-size: 0.9rem;
+}
+
+.view-results-btn {
+    background-color: #4a86e8;
+    color: white;
+    border: none;
+    padding: 0.6rem 1.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+.view-results-btn:hover {
+    background-color: #3a76d8;
+}
+
+.survey-selection-actions {
+    display: flex;
+    justify-content: center;
+    margin-top: 2rem;
+}
+
+#take-new-survey-btn {
+    background-color: #34a853;
+    color: white;
+    border: none;
+    padding: 0.8rem 1.5rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1rem;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+#take-new-survey-btn:hover {
+    background-color: #2d9249;
+}
+
+/* Results Actions */
+.results-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+    margin-top: 2rem;
+    flex-wrap: wrap;
+}
+
+.results-actions button {
+    padding: 0.7rem 1.2rem;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: 500;
+    transition: background-color 0.3s;
+}
+
+#take-another-survey {
+    background-color: #34a853;
+    color: white;
+    border: none;
+}
+
+#take-another-survey:hover {
+    background-color: #2d9249;
+}
+
+#view-other-results {
+    background-color: #4a86e8;
+    color: white;
+    border: none;
+}
+
+#view-other-results:hover {
+    background-color: #3a76d8;
+}
+
+#logout {
+    background-color: #ea4335;
+    color: white;
+    border: none;
+}
+
+#logout:hover {
+    background-color: #d33426;
 } 

@@ -564,6 +564,8 @@ export function createSurvey(dependencies = {}) {
 
     async function finalSubmission() {
         try {
+            console.log('Starting finalSubmission process...');
+            
             // First check for internet connection
             if (!navigator.onLine) {
                 win.alert('No internet connection. Please reconnect and try again.');
@@ -578,6 +580,7 @@ export function createSurvey(dependencies = {}) {
             }
             
             const answers = JSON.parse(savedAnswers);
+            console.log(`Found ${answers.length} saved answers to submit`, answers);
             
             // Get user ID from storage
             const userId = storage.getItem('participant_id');
@@ -614,10 +617,14 @@ export function createSurvey(dependencies = {}) {
                 }
             }
             
+            console.log('Using survey ID:', surveyId);
+            
             // Get cohort ID from storage
             const cohortId = storage.getItem('cohort_id');
             if (!cohortId) {
                 console.error('No cohort ID found, proceeding without it');
+            } else {
+                console.log('Using cohort ID:', cohortId);
             }
             
             // Refresh the auth session to ensure the token is valid
@@ -635,6 +642,8 @@ export function createSurvey(dependencies = {}) {
                     win.location.href = '/';
                     return;
                 }
+                
+                console.log('Session refreshed successfully');
             } catch (sessionError) {
                 console.error('Error refreshing auth session:', sessionError);
             }
@@ -643,6 +652,7 @@ export function createSurvey(dependencies = {}) {
             let participantId = storage.getItem('futurelens_participant_id');
             
             if (!participantId) {
+                console.log('No existing participant ID found, creating new record');
                 // Create a new participant record
                 try {
                     const insertPayload = {
@@ -667,35 +677,93 @@ export function createSurvey(dependencies = {}) {
                     }
                     
                     participantId = participantData.id;
+                    console.log('Created new participant record with ID:', participantId);
+                    
+                    // Save in both localStorage variables for consistency
                     storage.setItem('futurelens_participant_id', participantId);
                 } catch (participantError) {
                     console.error('Exception creating participant record:', participantError);
                     win.alert('Error creating participant record. Please try again.');
                     return;
                 }
+            } else {
+                console.log('Using existing participant ID:', participantId);
+            }
+            
+            // Check if this participant already has responses in the database
+            const { data: existingResponses, error: existingResponsesError } = await supabaseClient
+                .from('responses')
+                .select('question_key')
+                .eq('participant_id', participantId);
+                
+            if (existingResponsesError) {
+                console.error('Error checking existing responses:', existingResponsesError);
+            } else if (existingResponses && existingResponses.length > 0) {
+                console.log(`Found ${existingResponses.length} existing responses in database`);
+                
+                // Get the question keys that already have responses
+                const existingQuestionKeys = existingResponses.map(r => r.question_key);
+                
+                // Filter out answers that already have responses in the database
+                const newAnswers = answers.filter(a => !existingQuestionKeys.includes(a.question_key));
+                console.log(`Filtered to ${newAnswers.length} new answers to submit`);
+                
+                // Use the filtered list for submission
+                if (newAnswers.length === 0) {
+                    console.log('No new answers to submit, proceeding to results page');
+                    win.location.href = `/results.html?participant_id=${participantId}`;
+                    return;
+                }
+                
+                // Use the filtered list for the rest of the function
+                answers.length = 0;
+                answers.push(...newAnswers);
+            }
+            
+            // Validate that we have all required answers before submitting
+            if (surveyData && surveyData.statements) {
+                const requiredStatements = surveyData.statements.filter(s => s.required !== false);
+                console.log(`Survey has ${requiredStatements.length} required questions`);
+                
+                const answeredQuestionKeys = answers.map(a => a.question_key);
+                console.log('Answered question keys:', answeredQuestionKeys);
+                
+                // Check if we're missing any required answers
+                const missingRequiredAnswers = requiredStatements.filter(
+                    s => !answeredQuestionKeys.includes(s.id)
+                );
+                
+                if (missingRequiredAnswers.length > 0) {
+                    console.warn(`Missing ${missingRequiredAnswers.length} required answers`, 
+                        missingRequiredAnswers.map(s => s.id));
+                        
+                    // Allow submission anyway, but log the warning
+                    console.log('Proceeding with submission despite missing answers');
+                }
             }
             
             // Submit all answers to Supabase in one batch operation
-            const promises = answers.map(answer => {
-                return supabaseClient
-                    .from('responses')
-                    .insert({
-                        participant_id: participantId,
-                        question_key: answer.question_key,
-                        likert_value: answer.likert_value,
-                        dont_understand: answer.dont_understand
-                    });
-            });
+            console.log(`Submitting ${answers.length} responses to Supabase...`);
+            const responseData = answers.map(answer => ({
+                participant_id: participantId,
+                question_key: answer.question_key,
+                likert_value: answer.likert_value,
+                dont_understand: answer.dont_understand
+            }));
             
-            const results = await Promise.all(promises);
+            const { data: insertedResponses, error: insertError } = await supabaseClient
+                .from('responses')
+                .insert(responseData)
+                .select('id, question_key');
             
             // Check for errors
-            const errors = results.filter(result => result.error);
-            if (errors.length > 0) {
-                console.error('Errors submitting responses:', errors);
-                win.alert(`Some responses failed to submit (${errors.length}/${results.length}). Please try again.`);
+            if (insertError) {
+                console.error('Error submitting responses:', insertError);
+                win.alert(`Failed to submit responses. Please try again.`);
                 return;
             }
+            
+            console.log(`Successfully inserted ${insertedResponses.length} responses`);
             
             // Clear local storage of survey data
             storage.removeItem('surveyAnswers');
@@ -703,11 +771,13 @@ export function createSurvey(dependencies = {}) {
             storage.removeItem('currentQuestionIndex');
             storage.removeItem('currentSurvey');
             
+            // Keep the participant_id and futurelens_participant_id for results viewing
+            
             // Show success message
             win.alert('Survey submitted successfully!');
             
-            // Redirect to results page
-            win.location.href = '/results.html';
+            // Redirect to results page with the participant ID
+            win.location.href = `/results.html?participant_id=${participantId}`;
         } catch (error) {
             console.error('Error submitting survey:', error);
             win.alert('Error submitting survey. Please try again.');

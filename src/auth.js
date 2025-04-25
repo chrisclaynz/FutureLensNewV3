@@ -41,10 +41,11 @@ export const auth = {
             if (error) throw error;
 
             if (data?.user) {
-                // Store session info
+                // Store user ID in localStorage
                 localStorage.setItem('participant_id', data.user.id);
-                // Redirect to survey code page instead of directly to survey
-                window.location.href = '/survey-code.html';
+                
+                // Check if user has completed surveys
+                await this.checkCompletedSurveys(data.user.id);
             }
         } catch (error) {
             console.error('Login error:', error.message);
@@ -229,6 +230,205 @@ export const auth = {
             successDiv.textContent = message;
             successDiv.style.display = 'block';
         }
+    },
+
+    async checkCompletedSurveys(userId) {
+        try {
+            console.log('Checking for completed surveys for user:', userId);
+            
+            // Query the participants table for the user's surveys
+            const { data: participants, error: participantsError } = await supabase
+                .from('participants')
+                .select('id, survey_id, cohort_id, inserted_at')
+                .eq('user_id', userId);
+
+            if (participantsError) {
+                console.error('Error fetching completed surveys:', participantsError.message);
+                // If there's an error, continue to the survey code page
+                window.location.href = '/survey-code.html';
+                return;
+            }
+
+            console.log('Found participant records:', participants?.length || 0);
+            
+            if (!participants || participants.length === 0) {
+                console.log('No participant records found, redirecting to survey code page');
+                // No completed surveys, proceed to survey code input
+                window.location.href = '/survey-code.html';
+                return;
+            }
+
+            // For each participant, get the associated survey details
+            const surveyPromises = participants.map(async participant => {
+                console.log('Processing participant:', participant.id, 'for survey:', participant.survey_id);
+                
+                // Get the survey details
+                const { data: survey, error: surveyError } = await supabase
+                    .from('surveys')
+                    .select('id, json_config')
+                    .eq('id', participant.survey_id)
+                    .single();
+
+                if (surveyError) {
+                    console.error(`Error fetching survey ${participant.survey_id}:`, surveyError.message);
+                    return null;
+                }
+
+                // Check if the survey has responses for all required questions
+                const { data: responses, error: responsesError } = await supabase
+                    .from('responses')
+                    .select('id, question_key')
+                    .eq('participant_id', participant.id);
+
+                if (responsesError) {
+                    console.error(`Error fetching responses for participant ${participant.id}:`, responsesError.message);
+                    return null;
+                }
+
+                console.log(`Found ${responses?.length || 0} responses for participant ${participant.id}`);
+                
+                // Check if this is a completed survey
+                const surveyConfig = survey.json_config;
+                const statements = surveyConfig.statements || [];
+                const requiredStatements = statements.filter(s => s.required !== false);
+                
+                console.log(`Survey ${participant.survey_id} has ${requiredStatements.length} required statements`);
+                
+                // A survey is complete if responses exist for all required questions
+                const respondedQuestionKeys = responses.map(r => r.question_key);
+                console.log('Responded question keys:', respondedQuestionKeys);
+                console.log('Required question keys:', requiredStatements.map(s => s.id));
+                
+                // A survey is considered complete if:
+                // 1. There are responses, and
+                // 2. Every required question has a response OR there are at least as many responses as required questions
+                let isComplete = false;
+                
+                if (responses && responses.length > 0) {
+                    if (requiredStatements.length > 0) {
+                        // Either check that all required questions are answered
+                        const allRequiredAnswered = requiredStatements.every(s => 
+                            respondedQuestionKeys.includes(s.id)
+                        );
+                        
+                        // Or that there are at least as many responses as required questions
+                        // (this is a fallback in case question IDs don't match exactly)
+                        const enoughResponses = responses.length >= requiredStatements.length;
+                        
+                        isComplete = allRequiredAnswered || enoughResponses;
+                    } else {
+                        // If no required questions, as long as there are responses, it's complete
+                        isComplete = true;
+                    }
+                }
+                
+                console.log('Is survey complete?', isComplete);
+
+                if (isComplete) {
+                    return {
+                        participant_id: participant.id,
+                        survey_id: participant.survey_id,
+                        inserted_at: participant.inserted_at,
+                        title: surveyConfig.theme?.title || `Survey ${participant.survey_id}`,
+                        isComplete
+                    };
+                }
+                
+                return null;
+            });
+
+            // Wait for all promises to resolve
+            const completedSurveys = (await Promise.all(surveyPromises))
+                .filter(survey => survey !== null && survey.isComplete)
+                .sort((a, b) => new Date(b.inserted_at) - new Date(a.inserted_at)); // Sort by date descending
+
+            console.log('Found completed surveys:', completedSurveys.length);
+            
+            if (completedSurveys.length === 0) {
+                console.log('No completed surveys found, redirecting to survey code page');
+                // No completed surveys, proceed to survey code input
+                window.location.href = '/survey-code.html';
+                return;
+            }
+
+            if (completedSurveys.length === 1) {
+                console.log('One completed survey found, redirecting to results page');
+                // Only one completed survey, redirect directly to results
+                const participantId = completedSurveys[0].participant_id;
+                localStorage.setItem('futurelens_participant_id', participantId);
+                window.location.href = `/results.html?participant_id=${participantId}`;
+                return;
+            }
+
+            console.log('Multiple completed surveys found, showing selection screen');
+            // Multiple completed surveys, show selection screen
+            this.displaySurveySelection(completedSurveys);
+        } catch (error) {
+            console.error('Error checking completed surveys:', error);
+            // If any error occurs, proceed to survey code input
+            window.location.href = '/survey-code.html';
+        }
+    },
+    
+    displaySurveySelection(completedSurveys) {
+        // Get the root container
+        const container = document.getElementById('root');
+        if (!container) {
+            window.location.href = '/survey-code.html';
+            return;
+        }
+
+        // Create the survey selection HTML
+        let html = `
+            <div class="auth-container survey-selection-container">
+                <h1>Your Completed Surveys</h1>
+                <p>You have completed the following surveys. Choose one to view your results or take a new survey.</p>
+                
+                <div class="completed-surveys-list">
+        `;
+
+        // Add each completed survey to the list
+        completedSurveys.forEach(survey => {
+            const date = new Date(survey.inserted_at).toLocaleDateString();
+            html += `
+                <div class="completed-survey-item">
+                    <div class="survey-info">
+                        <h3>${survey.title}</h3>
+                        <p>Completed on ${date}</p>
+                    </div>
+                    <button class="view-results-btn" data-participant-id="${survey.participant_id}">View Results</button>
+                </div>
+            `;
+        });
+
+        // Add button to take a new survey
+        html += `
+                </div>
+                <div class="survey-selection-actions">
+                    <button id="take-new-survey-btn" class="primary-btn">Take A New Survey</button>
+                </div>
+            </div>
+        `;
+
+        // Set the HTML
+        container.innerHTML = html;
+
+        // Add event listeners to buttons
+        document.querySelectorAll('.view-results-btn').forEach(button => {
+            button.addEventListener('click', () => {
+                const participantId = button.getAttribute('data-participant-id');
+                localStorage.setItem('futurelens_participant_id', participantId);
+                window.location.href = `/results.html?participant_id=${participantId}`;
+            });
+        });
+
+        // Add event listener to the "Take A New Survey" button
+        const takeNewSurveyBtn = document.getElementById('take-new-survey-btn');
+        if (takeNewSurveyBtn) {
+            takeNewSurveyBtn.addEventListener('click', () => {
+                window.location.href = '/survey-code.html';
+            });
+        }
     }
 };
 
@@ -236,8 +436,9 @@ export const auth = {
 const isAuthPage = !window.location.pathname.includes('survey.html') && 
                    !window.location.pathname.includes('results.html');
 const isSurveyCodePage = window.location.pathname.includes('survey-code.html');
+const isDebugPage = window.location.pathname.includes('debug-participants.html');
 
-if (isAuthPage || isSurveyCodePage) {
+if (isAuthPage || isSurveyCodePage || isDebugPage) {
     if (document.readyState === 'loading') {
         document.addEventListener('DOMContentLoaded', () => {
             auth.init();
