@@ -1539,18 +1539,24 @@ button:disabled {
 }
 
 .perspective-statement {
-    background-color: #f5f7fd;
-    padding: 18px;
-    border-left: 4px solid #5e35b1;
-    margin: 25px 0;
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    margin: 20px 0;
+    padding: 15px;
+    background-color: #f7f7f7;
+    border-radius: 8px;
+    border-left: 4px solid #4a86e8;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .perspective-statement p {
     font-size: 18px;
-    line-height: 1.6;
+    line-height: 1.5;
     color: #333;
+    margin: 0;
+}
+
+.perspective-statement strong {
+    color: #4a86e8;
+    font-weight: 600;
 }
 
 .statement-responses {

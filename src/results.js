@@ -311,32 +311,45 @@ export const results = {
         const resultMessages = results.survey.theme?.resultMessages;
         
         if (resultMessages) {
+            // First handle strong left lean (avg <= -1)
             if (avg <= -1) {
                 // Strong left lean
                 perspectiveStatement = resultMessages.negative
                     .replace('{left_label}', leftLabel)
                     .replace('{right_label}', rightLabel);
                 perspectiveStatement = `Your responses suggest you <strong>strongly</strong> ${perspectiveStatement}`;
-            } else if (avg < 0) {
-                // Slight left lean
+            } else if (avg < -0.5) {
+                // Moderate left lean (-1 < avg < -0.5)
                 perspectiveStatement = resultMessages.negative
                     .replace('{left_label}', leftLabel)
                     .replace('{right_label}', rightLabel);
                 perspectiveStatement = `Your responses suggest you <strong>moderately</strong> ${perspectiveStatement}`;
+            } else if (avg < 0) {
+                // Slight left lean (-0.5 <= avg < 0)
+                perspectiveStatement = resultMessages.negative
+                    .replace('{left_label}', leftLabel)
+                    .replace('{right_label}', rightLabel);
+                perspectiveStatement = `Your responses suggest you <strong>slightly</strong> ${perspectiveStatement}`;
             } else if (avg === 0) {
                 // Neutral
                 perspectiveStatement = resultMessages.neutral
                     .replace('{left_label}', leftLabel)
                     .replace('{right_label}', rightLabel);
-                perspectiveStatement = `Your responses suggest you have a <strong>neutral</strong> perspective. ${perspectiveStatement}`;
+                perspectiveStatement = `Your responses suggest you have a <strong>balanced</strong> perspective. ${perspectiveStatement}`;
+            } else if (avg <= 0.5) {
+                // Slight right lean (0 < avg <= 0.5)
+                perspectiveStatement = resultMessages.positive
+                    .replace('{left_label}', leftLabel)
+                    .replace('{right_label}', rightLabel);
+                perspectiveStatement = `Your responses suggest you <strong>slightly</strong> ${perspectiveStatement}`;
             } else if (avg <= 1) {
-                // Slight right lean
+                // Moderate right lean (0.5 < avg <= 1)
                 perspectiveStatement = resultMessages.positive
                     .replace('{left_label}', leftLabel)
                     .replace('{right_label}', rightLabel);
                 perspectiveStatement = `Your responses suggest you <strong>moderately</strong> ${perspectiveStatement}`;
             } else {
-                // Strong right lean
+                // Strong right lean (avg > 1)
                 perspectiveStatement = resultMessages.positive
                     .replace('{left_label}', leftLabel)
                     .replace('{right_label}', rightLabel);
@@ -345,15 +358,19 @@ export const results = {
         } else {
             // Fallback if no result messages in theme
             if (avg <= -1) {
-                perspectiveStatement = `Your responses suggest you <strong>strongly</strong> support ${leftLabel} over ${rightLabel}`;
+                perspectiveStatement = `Your responses suggest you <strong>strongly</strong> favor ${leftLabel} over ${rightLabel}`;
+            } else if (avg < -0.5) {
+                perspectiveStatement = `Your responses suggest you <strong>moderately</strong> favor ${leftLabel} over ${rightLabel}`;
             } else if (avg < 0) {
-                perspectiveStatement = `Your responses suggest you <strong>moderately</strong> support ${leftLabel} over ${rightLabel}`;
+                perspectiveStatement = `Your responses suggest you <strong>slightly</strong> favor ${leftLabel} over ${rightLabel}`;
             } else if (avg === 0) {
-                perspectiveStatement = `Your responses suggest you have a <strong>neutral</strong> perspective that supports neither ${leftLabel} nor ${rightLabel}`;
+                perspectiveStatement = `Your responses suggest you have a <strong>balanced</strong> perspective between ${leftLabel} and ${rightLabel}`;
+            } else if (avg <= 0.5) {
+                perspectiveStatement = `Your responses suggest you <strong>slightly</strong> favor ${rightLabel} over ${leftLabel}`;
             } else if (avg <= 1) {
-                perspectiveStatement = `Your responses suggest you <strong>moderately</strong> support ${rightLabel} over ${leftLabel}`;
+                perspectiveStatement = `Your responses suggest you <strong>moderately</strong> favor ${rightLabel} over ${leftLabel}`;
             } else {
-                perspectiveStatement = `Your responses suggest you <strong>strongly</strong> support ${rightLabel} over ${leftLabel}`;
+                perspectiveStatement = `Your responses suggest you <strong>strongly</strong> favor ${rightLabel} over ${leftLabel}`;
             }
         }
         

@@ -20,9 +20,9 @@
       "stronglyAgree": "Strongly Agree"
     },
     "resultMessages": {
-      "positive": "You lean towards {right_label}.",
-      "negative": "You lean towards {left_label}.",
-      "neutral": "You have a balanced perspective between {left_label} and {right_label}."
+      "positive": "lean toward {right_label}",
+      "negative": "lean toward {left_label}",
+      "neutral": "have a balanced perspective between {left_label} and {right_label}"
     }
   },
   "statements": [
@@ -160,8 +160,8 @@
       "name": "Legislated Equity vs Economic Freedom",
       "description": "This continuum explores the balance between government intervention and free market principles.",
       "labels": {
-        "left": "Economic Freedom",
-        "right": "Legislated Equity"
+        "left": "Legislated Equity",
+        "right": "Economic Freedom"
       }
     },
     "techoptimismvstechpessimism": {
