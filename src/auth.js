@@ -84,6 +84,14 @@ export const auth = {
         }
         
         try {
+            // Get the current user's ID
+            const userId = localStorage.getItem('participant_id');
+            if (!userId) {
+                console.error('No user ID found');
+                window.location.href = '/';
+                return;
+            }
+
             // Query the cohorts table to find the cohort with this code
             const { data, error } = await supabase
                 .from('cohorts')
@@ -104,6 +112,43 @@ export const auth = {
             
             // Use the first matching cohort
             const cohort = data[0];
+            
+            // Check if the user has already completed this survey
+            const { data: existingParticipant, error: participantError } = await supabase
+                .from('participants')
+                .select('id, survey_id')
+                .eq('user_id', userId)
+                .eq('survey_id', cohort.survey_id)
+                .single();
+                
+            if (participantError && participantError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+                console.error('Error checking existing participant:', participantError.message);
+                // Continue with the normal flow, don't block the user due to this error
+            }
+            
+            if (existingParticipant) {
+                // Check if there are responses for this participant
+                const { data: responses, error: responsesError } = await supabase
+                    .from('responses')
+                    .select('id')
+                    .eq('participant_id', existingParticipant.id);
+                    
+                if (responsesError) {
+                    console.error('Error checking responses:', responsesError.message);
+                    // Continue with normal flow
+                }
+                
+                if (responses && responses.length > 0) {
+                    console.log('User has already completed this survey, redirecting to results');
+                    // Store the participant ID and redirect to results
+                    localStorage.setItem('futurelens_participant_id', existingParticipant.id);
+                    window.location.href = '/results.html';
+                    return;
+                }
+            }
+            
+            // If we get here, either the user hasn't completed the survey yet,
+            // or we couldn't determine if they have, so proceed normally
             
             // Store the cohort ID and survey ID in localStorage
             localStorage.setItem('cohort_id', cohort.id);

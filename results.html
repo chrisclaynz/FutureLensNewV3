@@ -21,11 +21,38 @@
     
     <script type="module">
         import { auth } from './src/auth.js';
+        import { supabase } from './src/client.js';
         
         // Initialize session timeout
         if (typeof auth.initSessionTimeout === 'function') {
             auth.initSessionTimeout();
         }
+        
+        // Verify user is authenticated
+        async function checkAuth() {
+            try {
+                const { data: { session }, error } = await supabase.auth.getSession();
+                if (error || !session) {
+                    console.error('No active session, redirecting to login');
+                    window.location.href = '/';
+                    return;
+                }
+                
+                // Check if we have a participant ID
+                const participantId = localStorage.getItem('futurelens_participant_id');
+                if (!participantId) {
+                    console.error('No participant ID found, redirecting to survey code page');
+                    window.location.href = '/survey-code.html';
+                    return;
+                }
+            } catch (error) {
+                console.error('Auth check error:', error);
+                window.location.href = '/';
+            }
+        }
+        
+        // Check auth on page load
+        checkAuth();
     </script>
     <script type="module" src="src/app.js"></script>
     <script type="module" src="src/results.js"></script>
