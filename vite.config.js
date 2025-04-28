@@ -14,4 +14,15 @@ export default defineConfig({
       VITE_SUPABASE_ANON_KEY: JSON.stringify(process.env.VITE_SUPABASE_ANON_KEY),
     },
   },
+  build: {
+    rollupOptions: {
+      input: {
+        main: 'index.html',
+        surveyCode: 'survey-code.html',
+        surveyWelcome: 'survey-welcome.html',
+        survey: 'survey.html',
+        results: 'results.html'
+      }
+    }
+  }
 }); 
