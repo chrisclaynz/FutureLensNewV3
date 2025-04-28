@@ -1,6 +1,6 @@
 # FutureLens
 
-A web-based survey application that helps users understand their cognitive preferences and thinking patterns.
+A Vanilla JS project for survey management with Supabase backend.
 
 ## Features
 
@@ -41,94 +41,78 @@ A web-based survey application that helps users understand their cognitive prefe
 ## Deployment Instructions
 
 ### Prerequisites
+- Node.js and npm installed
+- A Supabase account and project
 
-1. A Supabase account (https://supabase.com)
-2. A static hosting service (Netlify, Vercel, Firebase Hosting, GitHub Pages, etc.)
-
-### Setting Up Supabase
-
-1. Create a new Supabase project
-2. Run the SQL migrations in `/migrations.sql` on your Supabase database
-3. Configure Row-Level Security (RLS) policies for the tables
-4. Enable email authentication in Supabase Auth settings
-
-### Environment Variables
-
-Create a `.env` file with the following variables:
-
-```
-VITE_SUPABASE_URL=your_supabase_url
-VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
-```
-
-### Building for Production
-
-1. Install dependencies:
+### Environment Setup
+1. Clone the repository:
+   ```bash
+   git clone <repository-url>
+   cd FutureLens
+   ```
+2. Install dependencies:
    ```bash
    npm install
    ```
+3. Create a `.env` file in the root directory with your Supabase credentials:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_ANON_KEY=your_supabase_anon_key
+   ```
+4. Update `src/config.js` to use these environment variables.
 
-2. Build the project:
+### Database Setup
+1. Run the database migrations to create tables and enable Row Level Security (RLS):
+   ```bash
+   npm run migrate
+   ```
+   This will execute the SQL scripts in `src/migrations/` to set up your Supabase database.
+
+### Building the Frontend
+1. Build the project:
    ```bash
    npm run build
    ```
+   This will generate static files in the `dist/` directory.
 
-3. The built files will be in the `dist` directory.
-
-### Deploying to a Static Hosting Service
-
-#### Netlify
-
-1. Create a `netlify.toml` file in the project root:
-   ```toml
-   [build]
-     publish = "dist"
-     command = "npm run build"
-   
-   [[redirects]]
-     from = "/*"
-     to = "/index.html"
-     status = 200
-   ```
-
-2. Deploy using the Netlify CLI:
+### Deploying the Frontend
+#### Option 1: Deploy to Vercel
+1. Install Vercel CLI:
    ```bash
-   npx netlify deploy --prod
+   npm install -g vercel
    ```
-
-#### Vercel
-
-1. Create a `vercel.json` file in the project root:
-   ```json
-   {
-     "rewrites": [
-       { "source": "/(.*)", "destination": "/index.html" }
-     ]
-   }
-   ```
-
-2. Deploy using Vercel CLI:
+2. Deploy:
    ```bash
-   npx vercel --prod
+   vercel
    ```
+   Follow the prompts to link your project and deploy.
 
-#### Firebase Hosting
-
-1. Initialize Firebase:
+#### Option 2: Deploy to Netlify
+1. Install Netlify CLI:
    ```bash
-   firebase init hosting
+   npm install -g netlify-cli
    ```
-
-2. Deploy to Firebase:
+2. Deploy:
    ```bash
-   firebase deploy --only hosting
+   netlify deploy
    ```
+   Follow the prompts to link your project and deploy.
 
-### Post-Deployment Setup
+#### Option 3: Deploy to GitHub Pages
+1. Push your `dist/` directory to a GitHub repository.
+2. Go to your repository settings, navigate to "GitHub Pages", and select the branch to deploy.
 
-1. Set up a survey in the Supabase `surveys` table using the JSON format
-2. Create a cohort in the `cohorts` table and link it to the survey
-3. Share the cohort code with participants
+### Running Tests
+Run the test suite:
+```bash
+npm test
+```
+This will execute Jest tests located in the `test/` directory.
+
+### Additional Notes
+- Ensure your Supabase project has the correct RLS policies enabled.
+- For local development, use a local server (e.g., `npm run dev`).
+- For production, ensure all environment variables are set correctly.
 
 ## Local Development
 
@@ -143,13 +127,6 @@ VITE_SUPABASE_ANON_KEY=your_supabase_anon_key
    ```
 
 3. Open http://localhost:3000 in your browser
-
-## Testing
-
-Run unit tests:
-```bash
-npm test
-```
 
 ## License
 

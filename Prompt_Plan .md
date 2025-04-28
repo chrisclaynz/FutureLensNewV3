@@ -286,84 +286,8 @@ CopyEdit
 
 ### **Prompt 10a: Comprehensive Row Level Security Implementation and Testing**
 
-vbnet  
-CopyEdit  
-`Implement a comprehensive solution for the Row Level Security (RLS) vulnerabilities in the Supabase backend, focusing on backward compatibility and practical implementation:`
-
-`1. Perform a complete database operations inventory:` 
-   `- Audit all Supabase queries in the codebase (src/auth.js, src/survey.js, src/results.js, etc.)` 
-   `- Map each query to its access pattern (anonymous, authenticated, admin)` 
-   `- Document which operations might be affected by enabling RLS on the surveys table` 
-   `- Create a compatibility risk assessment for each identified query`
-
-`2. Harmonize migration files to resolve inconsistencies:` 
-   `- Compare all SQL migration files (migrations.sql, src/migrations/*.sql)` 
-   `- Create a consolidated migration that resolves contradictory RLS configurations` 
-   `- Ensure all tables have consistent RLS settings and policies` 
-   `- Pay special attention to the surveys table where policies exist but RLS is not enabled`
-   `- Document differences between intended and actual security model`
-
-`3. Design a phased implementation approach:` 
-   `- Create a staging environment for testing security changes` 
-   `- Implement backend changes in this order:` 
-     `a) Enable RLS on surveys table without modifying existing policies` 
-     `b) Verify and enhance existing policies if needed` 
-     `c) Test backward compatibility with application code` 
-     `d) Add admin access policies as needed` 
-   `- Provide clear rollback commands for each phase`
-
-`4. Enhance frontend code to handle security-related responses:` 
-   `- Modify all components that query the surveys table to handle RLS-related rejections` 
-   `- Create user-friendly error messages for access denied scenarios` 
-   `- Implement proper error handling that distinguishes between network issues and permission issues` 
-   `- Add debugging options that can be toggled in development environments`
-
-`5. Implement specific patterns for RLS-compliant queries:` 
-   `- Create helper functions for common query patterns that work with RLS` 
-   `- Demonstrate how to modify existing queries that might break with RLS enabled` 
-   `- Provide examples for each of these query types:` 
-     `a) Basic CRUD operations from authenticated contexts` 
-     `b) Aggregate operations that need to span user boundaries` 
-     `c) Admin-level operations that need to bypass RLS` 
-     `d) Anonymous access patterns for public resources`
-
-`6. Develop a comprehensive testing suite:` 
-   `- Create test users with different roles (anonymous, regular user, admin)` 
-   `- Implement tests based on actual application usage patterns, including:` 
-     `a) Survey access by anonymous vs. authenticated users` 
-     `b) Survey creation/modification by different user types` 
-     `c) Cross-user data access scenarios` 
-     `d) Authentication state transitions` 
-   `- Add performance comparison tests (before/after RLS)` 
-   `- Include specific test cases for each identified high-risk query`
-
-`7. Add database monitoring for security and performance:` 
-   `- Implement query logging for security-sensitive operations` 
-   `- Create a performance monitoring solution to identify RLS-related slowdowns` 
-   `- Develop optimization strategies for common RLS performance issues` 
-   `- Add alerting for unusual access patterns that might indicate security issues`
-
-`8. Create comprehensive documentation:` 
-   `- Document the security model with clear examples` 
-   `- Create a matrix showing access patterns for each user role and resource type` 
-   `- Provide guidelines for developers on adding new features with RLS considerations` 
-   `- Include troubleshooting guides for common RLS-related issues` 
-   `- Document any performance implications and mitigation strategies`
-
-`Deliver the following as part of this implementation:` 
-`- A consolidated migration file that properly enables RLS on the surveys table` 
-`- Updated application code that maintains functionality with RLS enabled` 
-`- A comprehensive test suite demonstrating RLS enforcement` 
-`- Documentation of the security model and implementation details` 
-`- Performance analysis comparing before/after RLS implementation` 
-`- Instructions for rollback if needed`
-
----
-
-### **Prompt 10b: Securing Database Functions Against Search Path Vulnerabilities**
-
 ```
-Implement a graduated approach to address the function_search_path_mutable warnings in the FutureLens application, with careful consideration for backward compatibility and existing functionality:
+Implement a comprehensive solution for the Row Level Security (RLS) vulnerabilities in the Supabase backend, focusing on backward compatibility and practical implementation:
 
 ## 1. Analysis and Discovery
    - Analyze the current implementation of both affected functions (`exec_sql` and `check_tables_exist`):
@@ -468,6 +392,103 @@ Implement a graduated approach to address the function_search_path_mutable warni
 
 Deliver a complete package that addresses the security vulnerabilities while respecting the existing application architecture. Ensure all changes are fully documented, tested, and include rollback procedures.
 ```
+
+---
+
+### **Prompt 11: Teacher-Facing Dashboard Implementation**
+
+vbnet  
+CopyEdit  
+`Implement a simple teacher-facing dashboard that allows educators to view cohort and individual student results:`
+
+`1. Update the existing auth.users table to support teacher access:`  
+   `- Add a 'role' column (enum: 'student', 'teacher')`  
+   `- Add a 'cohort_ids' array column to store assigned cohorts`  
+   `- Create a migration script that preserves existing user data`
+
+`2. Create a new admin.html page with:`  
+   `- A secure login form that uses existing Supabase auth`  
+   `- Role-based access control using JWT claims`  
+   `- A search interface with:`  
+     `- Cohort selector dropdown`  
+     `- Survey code input field`  
+     `- Search button`
+
+`3. Create a results_dashboard.html that shows:`  
+   `- Student identification at the top (for easy hiding)`  
+   `- A cohort results view that:`  
+     `- Shows average continuum positions (same as student view)`  
+     `- Has buttons to view detailed continuum data`  
+     `- Lists incomplete surveys with student names`  
+   `- A continuum details page that shows:`  
+     `- Question Statement`  
+     `- Cohort average score`  
+     `- Cohort standard deviation`  
+     `- Percentage of "Don't Understand" responses`  
+     `- Survey code average score`  
+     `- Survey code standard deviation`  
+     `- Survey code "Don't Understand" percentage`  
+   `- A student search box that:`  
+     `- Allows searching by name or email`  
+     `- Shows individual student results`  
+     `- Uses the same results view as students`
+
+`4. Create a new admin.js file that implements:`  
+   `- Role-based authentication using existing Supabase setup`  
+   `- Cohort and survey code search functionality`  
+   `- Student search functionality`  
+   `- Statistical calculations for:`  
+     `- Cohort averages`  
+     `- Standard deviations`  
+     `- Survey code averages`  
+     `- "Don't Understand" percentages`  
+   `- Performance optimizations:`  
+     `- Pagination for large datasets`  
+     `- Loading indicators`  
+     `- Efficient query patterns`  
+     `- Caching for frequently accessed data`
+
+`5. Implement enhanced RLS policies and database optimizations:`  
+   ```sql
+   -- Add performance indexes
+   CREATE INDEX idx_responses_cohort_id ON responses(cohort_id);
+   CREATE INDEX idx_participants_cohort_id ON participants(cohort_id);
+
+   -- Policy for teacher access
+   CREATE POLICY "Teachers can access their assigned cohorts"
+   ON responses
+   FOR SELECT
+   TO authenticated
+   USING (
+     auth.uid() IN (
+       SELECT user_id 
+       FROM auth.users 
+       WHERE role = 'teacher' 
+       AND cohort_ids @> ARRAY[cohort_id]
+     )
+   );
+   ```
+
+`6. Create comprehensive tests that verify:`  
+   `- Role-based authentication works correctly`  
+   `- RLS policies properly restrict data access`  
+   `- Statistical calculations are accurate`  
+   `- Search functionality works as expected`  
+   `- Performance optimizations are effective`  
+   `- Error handling works correctly`
+
+`7. Update the deployment documentation to include:`  
+   `- Role-based access setup`  
+   `- Teacher account configuration`  
+   `- Performance optimization guidelines`  
+   `- Error handling procedures`
+
+`Return the complete implementation including:`  
+`- Updated database migration scripts`  
+`- admin.js`  
+`- RLS policy definitions`  
+`- Test files`  
+`- Updated deployment documentation`
 
 ---
 
