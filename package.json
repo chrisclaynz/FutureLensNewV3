@@ -5,10 +5,15 @@
   "scripts": {
     "test": "jest",
     "test:watch": "jest --watch",
+    "test:rls": "jest test/rls-test.js",
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "server": "node server.js"
+    "server": "node server.js",
+    "setup:exec-sql": "node scripts/setup-exec-sql.js",
+    "apply:rls": "node scripts/apply-rls.js",
+    "apply:rls:admin": "node scripts/apply-rls-admin.js",
+    "fix:rls": "node scripts/apply-fix.js"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",

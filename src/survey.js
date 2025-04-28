@@ -1,4 +1,5 @@
 import { supabase } from './client.js';
+import { fetchSurveyById } from './utils/rls-helpers.js';
 
 export function createSurvey(dependencies = {}) {
     const {
@@ -19,14 +20,15 @@ export function createSurvey(dependencies = {}) {
             
             // Try to fetch specific survey if ID is provided
             if (surveyId) {
-                const { data: survey, error: specificError } = await supabaseClient
-                    .from('surveys')
-                    .select('id, json_config')
-                    .eq('id', surveyId)
-                    .single();
+                // Use the RLS-compliant helper
+                const { data: survey, error: specificError } = await fetchSurveyById(surveyId);
                     
                 if (specificError) {
                     console.error('Error fetching specific survey:', specificError);
+                    // Show a user-friendly error if this is an RLS error
+                    if (specificError.isRlsError) {
+                        throw new Error('You do not have permission to access this survey.');
+                    }
                     // Continue to fetch the latest survey instead
                 } else if (survey) {
                     console.log('Found specific survey in database:', survey.id);
@@ -35,6 +37,7 @@ export function createSurvey(dependencies = {}) {
             }
             
             // If specific survey not found or ID not provided, get the latest survey
+            // We'll fall back to the old method for backward compatibility
             const { data: surveys, error: listError } = await supabaseClient
                 .from('surveys')
                 .select('id, json_config')
@@ -43,6 +46,10 @@ export function createSurvey(dependencies = {}) {
                 
             if (listError) {
                 console.error('Error fetching surveys:', listError);
+                // Check if this might be an RLS error
+                if (listError.code === '42501' || listError.message.includes('permission denied')) {
+                    throw new Error('You do not have permission to access survey data. Please make sure you are authorized.');
+                }
                 throw new Error('Unable to fetch survey from database. Please try again later.');
             }
             
@@ -52,27 +59,11 @@ export function createSurvey(dependencies = {}) {
                 return surveys[0].json_config;
             }
             
-            // If no surveys found, show an error message
-            throw new Error('No surveys found in the database. Please contact the administrator.');
+            // No surveys found
+            throw new Error('No surveys found in the database.');
         } catch (error) {
-            console.error('Error fetching survey:', error);
-            
-            // Return a minimal error survey structure
-            return {
-                theme: {
-                    title: "Survey Error",
-                    instructions: "There was a problem loading the survey."
-                },
-                statements: [
-                    {
-                        id: "error_1",
-                        text: error.message || "Unable to load survey. Please try again later or contact support.",
-                        alignment: "left",
-                        continuum: "error",
-                        hasDontUnderstand: true
-                    }
-                ]
-            };
+            console.error('Error in fetchSurvey:', error);
+            throw error;
         }
     }
 

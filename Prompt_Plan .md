@@ -360,6 +360,117 @@ CopyEdit
 
 ---
 
+### **Prompt 10b: Securing Database Functions Against Search Path Vulnerabilities**
+
+```
+Implement a graduated approach to address the function_search_path_mutable warnings in the FutureLens application, with careful consideration for backward compatibility and existing functionality:
+
+## 1. Analysis and Discovery
+   - Analyze the current implementation of both affected functions (`exec_sql` and `check_tables_exist`):
+     ```sql
+     SELECT routine_definition, security_type 
+     FROM information_schema.routines 
+     WHERE routine_schema = 'public' 
+     AND routine_name IN ('exec_sql', 'check_tables_exist');
+     ```
+   - Identify all places in the codebase where these functions are called
+   - Document their current parameters, return types, and usage patterns
+   - Determine whether these functions access schemas other than 'public'
+
+## 2. Security Remediation Options
+   Provide three levels of remediation for the client to choose from:
+
+   ### Option A: Minimal Fix (Preserve All Functionality)
+   - Update both functions to use a fixed search path:
+     ```sql
+     CREATE OR REPLACE FUNCTION exec_sql(sql text)
+     RETURNS void
+     LANGUAGE plpgsql
+     SECURITY DEFINER
+     SET search_path = public
+     AS $$
+     BEGIN
+       EXECUTE sql;
+     END;
+     $$;
+     ```
+
+   ### Option B: Enhanced Security with Auditing
+   - Implement Option A plus:
+   - Add logging to track all executions of these powerful functions:
+     ```sql
+     CREATE TABLE IF NOT EXISTS security_audit_log (
+       id SERIAL PRIMARY KEY,
+       function_name TEXT NOT NULL,
+       parameters JSONB,
+       user_id UUID DEFAULT auth.uid(),
+       execution_time TIMESTAMP DEFAULT NOW()
+     );
+     
+     CREATE OR REPLACE FUNCTION exec_sql(sql text)
+     RETURNS void
+     LANGUAGE plpgsql
+     SECURITY DEFINER
+     SET search_path = public
+     AS $$
+     BEGIN
+       INSERT INTO security_audit_log(function_name, parameters)
+       VALUES ('exec_sql', jsonb_build_object('sql_hash', md5(sql)));
+       
+       EXECUTE sql;
+     END;
+     $$;
+     ```
+
+   ### Option C: Maximum Security (Functional Redesign)
+   - Replace `exec_sql` with purpose-specific functions for each required operation
+   - Create a migration path that identifies all current uses and creates safer alternatives
+   - Provide specific functions for common operations (e.g., `enable_rls_on_table(table_name text)`)
+   - Eventually deprecate the general-purpose function
+
+## 3. Implementation with Safety Checks
+   - Create scripts that apply each option with validations:
+     - Backup current function definitions before applying changes
+     - Verify functions still exist after changes
+     - Test function execution with simple test cases
+     - Add rollback capability if changes cause issues
+   - Add these as npm scripts:
+     ```json
+     "fix:search-path:analyze": "node scripts/analyze-functions.js",
+     "fix:search-path:minimal": "node scripts/fix-search-path-minimal.js",
+     "fix:search-path:enhanced": "node scripts/fix-search-path-enhanced.js",
+     "fix:search-path:rollback": "node scripts/rollback-function-changes.js"
+     ```
+
+## 4. Comprehensive Documentation
+   - Document each function's purpose, permissions, and potential risks
+   - Create developer guidelines for when and how to use these powerful functions
+   - Add explicit warnings in both function code comments and documentation about security implications
+   - Document the decision-making process for which security option was chosen and why
+
+## 5. Verification
+   - Provide specific SQL queries to verify changes were applied correctly:
+     ```sql
+     SELECT routine_name, routine_schema, 
+            routine_definition, security_type,
+            (SELECT setting FROM pg_settings WHERE name = 'search_path') as current_search_path
+     FROM information_schema.routines 
+     WHERE routine_schema = 'public' 
+     AND routine_name IN ('exec_sql', 'check_tables_exist');
+     ```
+   - Test real application workflows that use these functions
+   - Monitor for any regressions or unexpected behavior
+
+## 6. Future-Proofing
+   - Add a linting rule or CI check to prevent future functions from being created without fixed search paths
+   - Create guidelines for secure function creation in the project
+   - If using Option A or B, plan for eventual migration to Option C as a long-term security goal
+
+Deliver a complete package that addresses the security vulnerabilities while respecting the existing application architecture. Ensure all changes are fully documented, tested, and include rollback procedures.
+```
+
+---
+
 ## **Post-MVP Features**
 
 Below is the same expansion roadmap as before, which you can tackle **after** delivering a stable MVP. These are not prompted in detail, just keep them in mind:
