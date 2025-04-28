@@ -13,7 +13,12 @@
     "setup:exec-sql": "node scripts/setup-exec-sql.js",
     "apply:rls": "node scripts/apply-rls.js",
     "apply:rls:admin": "node scripts/apply-rls-admin.js",
-    "fix:rls": "node scripts/apply-fix.js"
+    "fix:rls": "node scripts/apply-fix.js",
+    "fix:search-path:analyze": "node scripts/analyze-functions.js",
+    "fix:search-path:minimal": "node scripts/fix-search-path-minimal.js",
+    "fix:search-path:enhanced": "node scripts/fix-search-path-enhanced.js",
+    "fix:search-path:rollback": "node scripts/rollback-function-changes.js",
+    "fix:search-path:redesign": "node scripts/apply-functional-redesign.js"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",
