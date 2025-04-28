@@ -364,10 +364,24 @@ export const results = {
                 item.dontUnderstand = true;
             }
             
-            // Calculate if response supports the statement's alignment
-            const isSupporting = 
-                (alignment === 'right' && likertValue > 0) || 
-                (alignment === 'left' && likertValue < 0);
+            // Get the average score to determine where the user leans on this continuum
+            const avgScore = score.average;
+            // Determine if user leans left or right on this continuum
+            const userLeansRight = avgScore > 0;
+            
+            // Determine if this response aligns with user's overall leaning
+            let isSupporting;
+            if (userLeansRight) {
+                // User leans right (positive score)
+                isSupporting = 
+                    (alignment === 'left' && likertValue > 0) || 
+                    (alignment === 'right' && likertValue < 0);
+            } else {
+                // User leans left (negative score) or neutral
+                isSupporting = 
+                    (alignment === 'right' && likertValue > 0) || 
+                    (alignment === 'left' && likertValue < 0);
+            }
             
             if (isSupporting) {
                 supportingResponses.push(item);
