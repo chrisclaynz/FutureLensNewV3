@@ -349,6 +349,8 @@ export const results = {
         // Categorize responses
         const supportingResponses = [];
         const contradictingResponses = [];
+        const leftAlignedResponses = [];
+        const rightAlignedResponses = [];
         
         statementResponses.forEach(item => {
             if (!item.response || !item.response.likert_value) {
@@ -368,25 +370,41 @@ export const results = {
             const avgScore = score.average;
             // Determine if user leans left or right on this continuum
             const userLeansRight = avgScore > 0;
-            
-            // Determine if this response aligns with user's overall leaning
-            let isSupporting;
-            if (userLeansRight) {
-                // User leans right (positive score)
-                isSupporting = 
-                    (alignment === 'left' && likertValue > 0) || 
-                    (alignment === 'right' && likertValue < 0);
+            const isNeutral = avgScore === 0;
+
+            // For neutral perspectives, categorize by alignment with each side
+            if (isNeutral) {
+                // For neutral users, categorize by which perspective the response aligns with
+                if (alignment === 'left' && likertValue < 0) {
+                    leftAlignedResponses.push(item);
+                } else if (alignment === 'right' && likertValue < 0) {
+                    rightAlignedResponses.push(item);
+                } else if (alignment === 'left' && likertValue > 0) {
+                    rightAlignedResponses.push(item);
+                } else if (alignment === 'right' && likertValue > 0) {
+                    leftAlignedResponses.push(item);
+                }
             } else {
-                // User leans left (negative score) or neutral
-                isSupporting = 
-                    (alignment === 'right' && likertValue > 0) || 
-                    (alignment === 'left' && likertValue < 0);
-            }
-            
-            if (isSupporting) {
-                supportingResponses.push(item);
-            } else {
-                contradictingResponses.push(item);
+                // For non-neutral users, use the existing logic
+                // Determine if this response aligns with user's overall leaning
+                let isSupporting;
+                if (userLeansRight) {
+                    // User leans right (positive score)
+                    isSupporting = 
+                        (alignment === 'left' && likertValue > 0) || 
+                        (alignment === 'right' && likertValue < 0);
+                } else {
+                    // User leans left (negative score)
+                    isSupporting = 
+                        (alignment === 'right' && likertValue > 0) || 
+                        (alignment === 'left' && likertValue < 0);
+                }
+                
+                if (isSupporting) {
+                    supportingResponses.push(item);
+                } else {
+                    contradictingResponses.push(item);
+                }
             }
         });
         
@@ -407,69 +425,140 @@ export const results = {
                 </div>
         `;
         
-        // Show supporting and contradicting responses
-        if (supportingResponses.length > 0) {
-            detailsHtml += `
-                <div class="statement-responses supporting-responses">
-                    <h3>Responses that support your perspective:</h3>
-            `;
-            
-            supportingResponses.forEach(item => {
-                let likertText = "";
-                switch(item.response.likert_value) {
-                    case 2: likertText = "Strongly Agree"; break;
-                    case 1: likertText = "Agree"; break;
-                    case -1: likertText = "Disagree"; break;
-                    case -2: likertText = "Strongly Disagree"; break;
-                    default: likertText = "No response";
-                }
-                
-                let responseText = `You selected: ${likertText}`;
-                if (item.dontUnderstand) {
-                    responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
-                }
-                
-                detailsHtml += `
-                    <div class="statement-response supporting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
-                        <p class="response-value">${responseText}</p>
-                        <p class="statement-text">${item.statement.text}</p>
-                    </div>
-                `;
-            });
-            
-            detailsHtml += `</div>`;
-        }
+        // For neutral perspectives, show responses grouped by which perspective they align with
+        const isNeutral = score.average === 0;
         
-        if (contradictingResponses.length > 0) {
-            detailsHtml += `
-                <div class="statement-responses contradicting-responses">
-                    <h3>Responses that contradict your perspective:</h3>
-            `;
-            
-            contradictingResponses.forEach(item => {
-                let likertText = "";
-                switch(item.response.likert_value) {
-                    case 2: likertText = "Strongly Agree"; break;
-                    case 1: likertText = "Agree"; break;
-                    case -1: likertText = "Disagree"; break;
-                    case -2: likertText = "Strongly Disagree"; break;
-                    default: likertText = "No response";
-                }
-                
-                let responseText = `You selected: ${likertText}`;
-                if (item.dontUnderstand) {
-                    responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
-                }
-                
+        if (isNeutral) {
+            // Show left-aligned responses
+            if (leftAlignedResponses.length > 0) {
                 detailsHtml += `
-                    <div class="statement-response contradicting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
-                        <p class="response-value">${responseText}</p>
-                        <p class="statement-text">${item.statement.text}</p>
-                    </div>
+                    <div class="statement-responses left-aligned-responses">
+                        <h3>Responses aligning with ${leftLabel}:</h3>
                 `;
-            });
+                
+                leftAlignedResponses.forEach(item => {
+                    let likertText = "";
+                    switch(item.response.likert_value) {
+                        case 2: likertText = "Strongly Agree"; break;
+                        case 1: likertText = "Agree"; break;
+                        case -1: likertText = "Disagree"; break;
+                        case -2: likertText = "Strongly Disagree"; break;
+                        default: likertText = "No response";
+                    }
+                    
+                    let responseText = `You selected: ${likertText}`;
+                    if (item.dontUnderstand) {
+                        responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
+                    }
+                    
+                    detailsHtml += `
+                        <div class="statement-response left-aligned ${item.dontUnderstand ? 'with-dont-understand' : ''}">
+                            <p class="response-value">${responseText}</p>
+                            <p class="statement-text">${item.statement.text}</p>
+                        </div>
+                    `;
+                });
+                
+                detailsHtml += `</div>`;
+            }
             
-            detailsHtml += `</div>`;
+            // Show right-aligned responses
+            if (rightAlignedResponses.length > 0) {
+                detailsHtml += `
+                    <div class="statement-responses right-aligned-responses">
+                        <h3>Responses aligning with ${rightLabel}:</h3>
+                `;
+                
+                rightAlignedResponses.forEach(item => {
+                    let likertText = "";
+                    switch(item.response.likert_value) {
+                        case 2: likertText = "Strongly Agree"; break;
+                        case 1: likertText = "Agree"; break;
+                        case -1: likertText = "Disagree"; break;
+                        case -2: likertText = "Strongly Disagree"; break;
+                        default: likertText = "No response";
+                    }
+                    
+                    let responseText = `You selected: ${likertText}`;
+                    if (item.dontUnderstand) {
+                        responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
+                    }
+                    
+                    detailsHtml += `
+                        <div class="statement-response right-aligned ${item.dontUnderstand ? 'with-dont-understand' : ''}">
+                            <p class="response-value">${responseText}</p>
+                            <p class="statement-text">${item.statement.text}</p>
+                        </div>
+                    `;
+                });
+                
+                detailsHtml += `</div>`;
+            }
+        } else {
+            // Show supporting and contradicting responses for non-neutral perspectives
+            if (supportingResponses.length > 0) {
+                detailsHtml += `
+                    <div class="statement-responses supporting-responses">
+                        <h3>Responses that support your perspective:</h3>
+                `;
+                
+                supportingResponses.forEach(item => {
+                    let likertText = "";
+                    switch(item.response.likert_value) {
+                        case 2: likertText = "Strongly Agree"; break;
+                        case 1: likertText = "Agree"; break;
+                        case -1: likertText = "Disagree"; break;
+                        case -2: likertText = "Strongly Disagree"; break;
+                        default: likertText = "No response";
+                    }
+                    
+                    let responseText = `You selected: ${likertText}`;
+                    if (item.dontUnderstand) {
+                        responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
+                    }
+                    
+                    detailsHtml += `
+                        <div class="statement-response supporting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
+                            <p class="response-value">${responseText}</p>
+                            <p class="statement-text">${item.statement.text}</p>
+                        </div>
+                    `;
+                });
+                
+                detailsHtml += `</div>`;
+            }
+            
+            if (contradictingResponses.length > 0) {
+                detailsHtml += `
+                    <div class="statement-responses contradicting-responses">
+                        <h3>Responses that contradict your perspective:</h3>
+                `;
+                
+                contradictingResponses.forEach(item => {
+                    let likertText = "";
+                    switch(item.response.likert_value) {
+                        case 2: likertText = "Strongly Agree"; break;
+                        case 1: likertText = "Agree"; break;
+                        case -1: likertText = "Disagree"; break;
+                        case -2: likertText = "Strongly Disagree"; break;
+                        default: likertText = "No response";
+                    }
+                    
+                    let responseText = `You selected: ${likertText}`;
+                    if (item.dontUnderstand) {
+                        responseText += ` <span class="dont-understand-note">(You indicated you didn't understand this statement)</span>`;
+                    }
+                    
+                    detailsHtml += `
+                        <div class="statement-response contradicting ${item.dontUnderstand ? 'with-dont-understand' : ''}">
+                            <p class="response-value">${responseText}</p>
+                            <p class="statement-text">${item.statement.text}</p>
+                        </div>
+                    `;
+                });
+                
+                detailsHtml += `</div>`;
+            }
         }
         
         // Close the HTML
