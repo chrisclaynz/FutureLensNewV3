@@ -1545,16 +1545,43 @@ button:disabled {
     margin: 25px 0;
     border-radius: var(--border-radius);
     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    text-align: center;
 }
 
 .perspective-statement p {
-    font-size: 18px;
+    font-size: 16px;
     line-height: 1.6;
     color: #333;
+    margin-bottom: 15px;
+    text-align: center;
+}
+
+.perspective-statement-brief {
+    font-size: 14px;
+    color: #555;
+    margin: 5px 0 15px 0;
+    line-height: 1.4;
+    font-style: italic;
+    text-align: center;
+}
+
+.continuum-description {
+    background-color: #f8f9fa;
+    border-radius: 8px;
+    padding: 15px;
+    margin-bottom: 20px;
+    border-left: 3px solid var(--primary-color);
+}
+
+.continuum-description p {
+    font-size: 16px;
+    line-height: 1.5;
+    color: #555;
+    margin: 0;
 }
 
 .statement-responses {
-    margin-top: 30px;
+    margin-top: 25px;
 }
 
 .supporting-responses h3 {
