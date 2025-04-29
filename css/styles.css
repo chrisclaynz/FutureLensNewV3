@@ -1426,17 +1426,74 @@ button:disabled {
     box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
+/* Continuum details panel styles */
 .continuum-details {
-    width: 100%;
-    max-width: 800px;
-    margin: 0 auto;
+    display: none;
+    z-index: 100;
+    position: relative;
+    margin-top: 20px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
     padding: 20px;
     background-color: #fff;
-    border-radius: var(--border-radius);
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-    position: relative; /* For positioning the back-button-top */
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
+.continuum-details.hidden {
+    display: none;
+}
+
+.continuum-details:not(.hidden) {
+    display: block;
+}
+
+/* Distribution bar styles */
+.distribution-bar {
+    min-height: 40px;
+    margin-bottom: 10px;
+    border: 1px solid #eee;
+    display: flex;
+    height: 30px;
+    width: 100%;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.distribution-segment {
+    min-height: 40px;
+    font-size: 16px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: white;
+    font-weight: bold;
+    min-width: 30px;
+}
+
+.neg-two { background-color: #d32f2f; }
+.neg-one { background-color: #f44336; }
+.pos-one { background-color: #4caf50; }
+.pos-two { background-color: #2e7d32; }
+
+.distribution-labels {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 5px;
+    font-size: 0.8rem;
+}
+
+.dont-understand-stat {
+    margin-top: 20px;
+    padding: 10px;
+    background-color: #f5f5f5;
+    border-radius: 4px;
+}
+
+.response-summary {
+    margin-top: 20px;
+}
+
+/* Back button styles */
 .back-button {
     background-color: #5e35b1;
     border: none;
@@ -1859,20 +1916,6 @@ button:disabled {
     padding-bottom: 20px;
 }
 
-.back-button {
-    background-color: #5e35b1;
-    border: none;
-    color: white;
-    padding: 10px 20px;
-    border-radius: var(--border-radius);
-    cursor: pointer;
-    font-size: 15px;
-    transition: all 0.2s;
-    font-weight: 500;
-    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-    display: inline-block;
-}
-
 .back-button-top {
     position: absolute;
     top: 20px;
@@ -2256,4 +2299,26 @@ button:disabled {
         width: 100%;
         justify-content: space-between;
     }
+}
+
+/* Add spinner animation for loading indicator */
+.spinner {
+    width: 30px;
+    height: 30px;
+    border: 3px solid rgba(0, 0, 0, 0.1);
+    border-radius: 50%;
+    border-top-color: #3498db;
+    animation: spin 1s linear infinite;
+    margin: 0 auto 10px;
+}
+
+@keyframes spin {
+    0% { transform: rotate(0deg); }
+    100% { transform: rotate(360deg); }
+}
+
+#loading-indicator {
+    text-align: center;
+    color: #666;
+    font-size: 14px;
 } 
