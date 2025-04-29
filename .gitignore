@@ -25,4 +25,5 @@ yarn-error.log*
 
 # Build
 dist/
-build/ 
+build/
+dist1/ 

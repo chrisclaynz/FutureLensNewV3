@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>FutureLens Admin Dashboard</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <!-- Login section removed: unified login flow now handles authentication -->
+        
+        <div id="dashboard-section" class="section">
+            <header class="dashboard-header">
+                <h1>FutureLens Admin Dashboard</h1>
+                <div class="user-info">
+                    <span id="user-role">Role: Loading...</span>
+                    <button id="logout-btn" class="btn secondary">Logout</button>
+                </div>
+            </header>
+
+            <div class="dashboard-tabs">
+                <button class="tab-btn active" data-tab="search-tab">Search Results</button>
+                <button class="tab-btn" data-tab="invite-tab">Manage Invites</button>
+            </div>
+            
+            <div class="tab-content" id="search-tab">
+                <div class="search-interface card">
+                    <h2>Search Survey Results</h2>
+                    <form id="search-form">
+                        <div class="form-group">
+                            <label for="search-cohort-select">Select Cohort:</label>
+                            <select id="search-cohort-select" required>
+                                <option value="">Loading cohorts...</option>
+                            </select>
+                        </div>
+                        <div class="form-group">
+                            <label for="survey-code">Survey Code:</label>
+                            <input type="text" id="survey-code" required placeholder="Enter survey code">
+                        </div>
+                        <button type="button" id="search-btn" class="btn primary">Search</button>
+                    </form>
+                </div>
+
+                <div id="results-container" class="hidden">
+                    <div class="student-identification card">
+                        <div class="header-row">
+                            <h2>Student Results</h2>
+                            <button id="toggle-student-ids" class="btn small">Hide Student IDs</button>
+                        </div>
+                        <div class="search-box">
+                            <input type="text" id="student-search" placeholder="Search by name or email...">
+                        </div>
+                    </div>
+
+                    <div class="cohort-results card">
+                        <h3>Cohort Overview</h3>
+                        <div id="cohort-averages"></div>
+                        <div id="incomplete-surveys"></div>
+                    </div>
+
+                    <div class="continuum-details card hidden">
+                        <h3>Continuum Details</h3>
+                        <div id="continuum-stats"></div>
+                    </div>
+                </div>
+            </div>
+            
+            <div class="tab-content hidden" id="invite-tab">
+                <div class="invite-management card">
+                    <h2>Teacher Invites</h2>
+                    <form id="invite-form">
+                        <div class="form-group">
+                            <label for="invite-cohort-select">Select Cohorts:</label>
+                            <select id="invite-cohort-select" multiple required>
+                                <option value="">Loading cohorts...</option>
+                            </select>
+                            <small>Hold Ctrl/Cmd to select multiple cohorts</small>
+                        </div>
+                        <div class="form-group">
+                            <label for="invite-email">Teacher Email (optional):</label>
+                            <input type="email" id="invite-email" placeholder="Optional: Restrict invite to this email">
+                        </div>
+                        <div class="form-group">
+                            <label for="expiry-days">Expires in (days):</label>
+                            <input type="number" id="expiry-days" value="7" min="1" max="30">
+                        </div>
+                        <button type="submit" class="btn primary">Generate Invite Code</button>
+                    </form>
+                    <div id="invite-result" class="hidden">
+                        <h4>Invite Code Generated:</h4>
+                        <p id="invite-code" class="code-display"></p>
+                        <p>Share this code with the teacher. They can use it to register at: <a href="/teacher-register.html" target="_blank">Teacher Registration</a></p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseClient = supabase.createClient(
+            'https://noxrttgtvhtoiejujoyd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5veHJ0dGd0dmh0b2llanVqb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTM0NjAsImV4cCI6MjA1OTkyOTQ2MH0.fYAZdAQvWerLIR8OYajCMc8rM90g--GqR3stlHNk7Hk'
+        );
+    </script>
+    <script src="src/admin.js"></script>
+</body>
+</html> 

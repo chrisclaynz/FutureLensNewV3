@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Teacher Registration - FutureLens</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+</head>
+<body>
+    <div class="container">
+        <div class="section">
+            <h1>Teacher Registration</h1>
+            <p>Enter your invite code to register as a teacher.</p>
+            
+            <form id="register-form">
+                <div class="form-group">
+                    <label for="invite-code">Invite Code:</label>
+                    <input type="text" id="invite-code" required>
+                </div>
+                <div class="form-group">
+                    <label for="email">Email:</label>
+                    <input type="email" id="email" required>
+                </div>
+                <div class="form-group">
+                    <label for="password">Password:</label>
+                    <input type="password" id="password" required minlength="6">
+                </div>
+                <button type="submit">Register</button>
+            </form>
+
+            <div id="error-message" class="error hidden"></div>
+            <div id="success-message" class="success hidden"></div>
+        </div>
+    </div>
+
+    <script>
+        // Initialize Supabase client
+        const supabaseClient = supabase.createClient(
+            'https://noxrttgtvhtoiejujoyd.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5veHJ0dGd0dmh0b2llanVqb3lkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDQzNTM0NjAsImV4cCI6MjA1OTkyOTQ2MH0.fYAZdAQvWerLIR8OYajCMc8rM90g--GqR3stlHNk7Hk'
+        );
+
+        // Handle form submission
+        document.getElementById('register-form').addEventListener('submit', async (e) => {
+            e.preventDefault();
+            
+            const inviteCode = document.getElementById('invite-code').value.trim();
+            const email = document.getElementById('email').value.trim();
+            const password = document.getElementById('password').value;
+            
+            try {
+                console.log('Validating invite code:', inviteCode);
+                
+                // First validate the invite code
+                const { data: validation, error: validationError } = await supabaseClient
+                    .rpc('validate_teacher_invite', {
+                        p_code: inviteCode,
+                        p_email: email
+                    });
+
+                console.log('Validation response:', { validation, validationError });
+
+                if (validationError) {
+                    console.error('Validation error:', validationError);
+                    throw new Error(validationError.message);
+                }
+
+                if (!validation.is_valid) {
+                    throw new Error(validation.error_message);
+                }
+
+                console.log('Creating user with Supabase auth...');
+                
+                // Create the user with Supabase auth
+                const { data: authData, error: authError } = await supabaseClient.auth.signUp({
+                    email,
+                    password,
+                    options: {
+                        data: {
+                            role: 'teacher',
+                            cohort_ids: validation.cohort_ids
+                        }
+                    }
+                });
+
+                console.log('Auth response:', { authData, authError });
+
+                if (authError) {
+                    console.error('Auth error:', authError);
+                    throw new Error(authError.message);
+                }
+
+                // Show success message
+                document.getElementById('success-message').textContent = 'Registration successful! You can now log in.';
+                document.getElementById('success-message').classList.remove('hidden');
+                document.getElementById('register-form').reset();
+
+            } catch (error) {
+                console.error('Registration error:', error);
+                document.getElementById('error-message').textContent = error.message;
+                document.getElementById('error-message').classList.remove('hidden');
+            }
+        });
+    </script>
+</body>
+</html> 

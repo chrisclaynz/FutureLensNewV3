@@ -101,6 +101,9 @@
         <div id="log-container"></div>
     </div>
     
+    <!-- Load Supabase from CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <script type="module">
         import { createTables } from './src/migrations/create_tables.js';
         import { supabase } from './src/client.js';

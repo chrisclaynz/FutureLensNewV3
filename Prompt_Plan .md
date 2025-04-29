@@ -395,100 +395,115 @@ Deliver a complete package that addresses the security vulnerabilities while res
 
 ---
 
-### **Prompt 11: Teacher-Facing Dashboard Implementation**
+### **Prompt 11 (Revised): Unified Login with Teacher Dashboard Implementation**
 
 vbnet  
 CopyEdit  
-`Implement a simple teacher-facing dashboard that allows educators to view cohort and individual student results:`
+`Implement a teacher-facing dashboard using a unified login approach that simplifies access without requiring separate authentication flows:`
 
-`1. Update the existing auth.users table to support teacher access:`  
-   `- Add a 'role' column (enum: 'student', 'teacher')`  
-   `- Add a 'cohort_ids' array column to store assigned cohorts`  
-   `- Create a migration script that preserves existing user data`
+`1. Database Structure Updates:`  
+   `- Verify and update the existing profiles table to ensure it has:`  
+     `- An 'id' column that references auth.users(id)`  
+     `- A 'role' column (enum: 'student', 'teacher', 'admin')`  
+     `- A 'cohort_ids' array column to store assigned cohorts`  
+   `- Run a migration script that safely updates existing user data`  
+   `- Add proper indexes for performance optimization`
 
-`2. Create a new admin.html page with:`  
-   `- A secure login form that uses existing Supabase auth`  
-   `- Role-based access control using JWT claims`  
-   `- A search interface with:`  
+`2. Unified Authentication System:`  
+   `- Update auth.js to implement role-based redirection after successful authentication:`  
+   ```javascript
+   // After successful login in auth.js
+   const { data: profile } = await supabase
+     .from('profiles')
+     .select('role')
+     .eq('id', user.id)
+     .single();
+     
+   if (profile?.role === 'teacher' || profile?.role === 'admin') {
+     // Store role information in sessionStorage (not localStorage)
+     sessionStorage.setItem('user_role', profile.role);
+     window.location.href = '/admin.html';
+   } else {
+     // Continue with student flow
+     window.location.href = '/survey-code.html';
+   }
+   ```
+   `- Implement proper error handling that defaults to student access on any error`  
+   `- Ensure all authentication state is stored consistently between components`  
+   `- Maintain the existing session timeout mechanism`
+
+`3. Admin Dashboard Security:`  
+   `- Update admin.html to remove the login form completely`  
+   `- Implement session verification on page load that:`  
+     `- Verifies an active Supabase session exists`  
+     `- Confirms the user has 'teacher' or 'admin' role`  
+     `- Redirects to main login page if either check fails`  
+     `- Uses try/catch blocks to handle all potential errors`  
+   `- Implement search interface with:`  
      `- Cohort selector dropdown`  
      `- Survey code input field`  
      `- Search button`
 
-`3. Create a results_dashboard.html that shows:`  
-   `- Student identification at the top (for easy hiding)`  
-   `- A cohort results view that:`  
-     `- Shows average continuum positions (same as student view)`  
-     `- Has buttons to view detailed continuum data`  
-     `- Lists incomplete surveys with student names`  
-   `- A continuum details page that shows:`  
-     `- Question Statement`  
-     `- Cohort average score`  
-     `- Cohort standard deviation`  
-     `- Percentage of "Don't Understand" responses`  
-     `- Survey code average score`  
-     `- Survey code standard deviation`  
-     `- Survey code "Don't Understand" percentage`  
-   `- A student search box that:`  
-     `- Allows searching by name or email`  
-     `- Shows individual student results`  
-     `- Uses the same results view as students`
+`4. Results Dashboard Structure:`  
+   `- Create a results_dashboard component that:`  
+     `- Shows student identification with show/hide toggle`  
+     `- Displays cohort overview with average continuum positions`  
+     `- Provides detailed continuum breakdowns`  
+     `- Shows "Don't Understand" percentages`  
+     `- Includes a student search feature`
 
-`4. Create a new admin.js file that implements:`  
-   `- Role-based authentication using existing Supabase setup`  
-   `- Cohort and survey code search functionality`  
-   `- Student search functionality`  
-   `- Statistical calculations for:`  
-     `- Cohort averages`  
-     `- Standard deviations`  
-     `- Survey code averages`  
-     `- "Don't Understand" percentages`  
-   `- Performance optimizations:`  
-     `- Pagination for large datasets`  
-     `- Loading indicators`  
-     `- Efficient query patterns`  
-     `- Caching for frequently accessed data`
+`5. Admin.js Refactoring:`  
+   `- Remove all redundant authentication logic`  
+   `- Implement session verification on each page load`  
+   `- Move all JWT parsing to a shared utility file`  
+   `- Implement efficient query patterns that work within RLS constraints`  
+   `- Add comprehensive error logging to diagnose issues`  
+   `- Ensure proper cleanup on logout or session expiration`
 
-`5. Implement enhanced RLS policies and database optimizations:`  
+`6. Enhanced RLS Policies:`  
+   `- Update RLS policies for the profiles table to fix schema query errors:`  
    ```sql
-   -- Add performance indexes
-   CREATE INDEX idx_responses_cohort_id ON responses(cohort_id);
-   CREATE INDEX idx_participants_cohort_id ON participants(cohort_id);
-
-   -- Policy for teacher access
+   -- Fix schema query error by ensuring proper public schema references
    CREATE POLICY "Teachers can access their assigned cohorts"
-   ON responses
+   ON public.responses
    FOR SELECT
    TO authenticated
    USING (
-     auth.uid() IN (
-       SELECT user_id 
-       FROM auth.users 
-       WHERE role = 'teacher' 
-       AND cohort_ids @> ARRAY[cohort_id]
+     EXISTS (
+       SELECT 1 FROM public.profiles
+       WHERE id = auth.uid()
+       AND role = 'teacher'
+       AND cohort_ids @> ARRAY[(
+         SELECT cohort_id FROM public.participants
+         WHERE id = responses.participant_id
+       )]
      )
    );
    ```
+   `- Test all policies to verify they don't interfere with authentication`  
+   `- Add database indexes for performance optimization`
 
-`6. Create comprehensive tests that verify:`  
-   `- Role-based authentication works correctly`  
-   `- RLS policies properly restrict data access`  
-   `- Statistical calculations are accurate`  
-   `- Search functionality works as expected`  
-   `- Performance optimizations are effective`  
-   `- Error handling works correctly`
+`7. Comprehensive Testing:`  
+   `- Create tests that verify:`  
+     `- Role-based redirection works correctly from main login`  
+     `- Session verification properly restricts admin access`  
+     `- Database queries respect RLS policies`  
+     `- Error handling gracefully handles failure cases`  
+     `- Browser history navigation works as expected`
 
-`7. Update the deployment documentation to include:`  
-   `- Role-based access setup`  
-   `- Teacher account configuration`  
-   `- Performance optimization guidelines`  
-   `- Error handling procedures`
+`8. Browser Compatibility and Security Enhancements:`  
+   `- Ensure the solution works across modern browsers`  
+   `- Use sessionStorage instead of localStorage for sensitive role information`  
+   `- Implement proper CORS headers if accessing from different domains`  
+   `- Add security headers to prevent common web vulnerabilities`  
+   `- Document all security considerations for future developers`
 
-`Return the complete implementation including:`  
-`- Updated database migration scripts`  
-`- admin.js`  
-`- RLS policy definitions`  
-`- Test files`  
-`- Updated deployment documentation`
+`Return the complete implementation with careful attention to:`  
+`- Clean separation between authentication and business logic`  
+`- Proper error handling that never exposes sensitive information`  
+`- Consistent session management across components`  
+`- Clear documentation explaining the unified authentication approach`  
+`- Backwards compatibility with existing student flows`
 
 ---
 

@@ -43,8 +43,35 @@ export const auth = {
             if (data?.user) {
                 // Store session info
                 localStorage.setItem('participant_id', data.user.id);
-                // Redirect to survey code page instead of directly to survey
-                window.location.href = '/survey-code.html';
+                
+                // Check user role to determine where to redirect
+                try {
+                    const { data: profile, error: profileError } = await supabase
+                        .from('profiles')
+                        .select('role')
+                        .eq('id', data.user.id)
+                        .single();
+                        
+                    if (profileError) {
+                        console.warn('Could not fetch user profile, defaulting to student role:', profileError);
+                        // Default to student flow if profile fetch fails
+                        window.location.href = '/survey-code.html';
+                        return;
+                    }
+                    
+                    // Redirect based on role
+                    if (profile && (profile.role === 'teacher' || profile.role === 'admin')) {
+                        console.log('User has teacher/admin role, redirecting to admin dashboard');
+                        window.location.href = '/admin.html';
+                    } else {
+                        // Continue with normal student flow
+                        window.location.href = '/survey-code.html';
+                    }
+                } catch (profileError) {
+                    console.error('Error checking user role:', profileError);
+                    // Default to student flow on any error
+                    window.location.href = '/survey-code.html';
+                }
             }
         } catch (error) {
             console.error('Login error:', error.message);
