@@ -580,8 +580,11 @@ export function createSurvey(dependencies = {}) {
             
             // Get survey ID from current survey, or fetch the latest survey ID
             let surveyId = storage.getItem('survey_id');
+            console.log('Survey ID from localStorage:', surveyId);
+            
             if (!surveyId && surveyData && surveyData.id) {
                 surveyId = surveyData.id;
+                console.log('Survey ID from surveyData:', surveyId);
             } else if (!surveyId) {
                 // Look up the latest survey
                 const { data: surveys, error: surveyError } = await supabaseClient
@@ -598,6 +601,7 @@ export function createSurvey(dependencies = {}) {
                 
                 if (surveys && surveys.length > 0) {
                     surveyId = surveys[0].id;
+                    console.log('Survey ID from latest survey query:', surveyId);
                 } else {
                     console.error('No surveys found in database');
                     win.alert('No surveys found in database. Please contact the administrator.');
@@ -607,6 +611,8 @@ export function createSurvey(dependencies = {}) {
             
             // Get cohort ID from storage
             const cohortId = storage.getItem('cohort_id');
+            console.log('Cohort ID from localStorage:', cohortId);
+            
             if (!cohortId) {
                 console.error('No cohort ID found, proceeding without it');
             }
@@ -630,39 +636,146 @@ export function createSurvey(dependencies = {}) {
                 console.error('Error refreshing auth session:', sessionError);
             }
             
+            // Also look up the cohort record to verify it exists and get its info
+            if (cohortId) {
+                try {
+                    const { data: cohortData, error: cohortError } = await supabaseClient
+                        .from('cohorts')
+                        .select('id, code, label, survey_id')
+                        .eq('id', cohortId)
+                        .single();
+                        
+                    if (cohortError) {
+                        console.error('Error verifying cohort:', cohortError);
+                    } else {
+                        console.log('Verified cohort data:', cohortData);
+                        // If cohort's survey_id is different from our current surveyId, log this discrepancy
+                        if (cohortData.survey_id && cohortData.survey_id !== surveyId) {
+                            console.warn('NOTE: Cohort has survey_id', cohortData.survey_id, 'but we are using', surveyId);
+                        }
+                    }
+                } catch (cohortError) {
+                    console.error('Error checking cohort data:', cohortError);
+                }
+            }
+            
             // Check if participant record exists, create if it doesn't
             let participantId = storage.getItem('futurelens_participant_id');
             
             if (!participantId) {
                 // Create a new participant record
                 try {
+                    // First check if we should get the survey_id from the cohort
+                    let finalSurveyId = surveyId;
+                    
+                    if (cohortId) {
+                        try {
+                            const { data: cohortData, error: cohortError } = await supabaseClient
+                                .from('cohorts')
+                                .select('id, code, survey_id')
+                                .eq('id', cohortId)
+                                .single();
+                                
+                            if (!cohortError && cohortData && cohortData.survey_id) {
+                                console.log('Using survey_id from cohort:', cohortData.survey_id);
+                                console.log('Previous survey_id was:', finalSurveyId);
+                                
+                                // Use the survey_id from the cohort to ensure consistency
+                                finalSurveyId = cohortData.survey_id;
+                            }
+                        } catch (cohortError) {
+                            console.error('Error checking cohort for survey_id:', cohortError);
+                        }
+                    }
+                    
                     const insertPayload = {
                         user_id: userId,
-                        survey_id: surveyId
+                        survey_id: finalSurveyId
                     };
                     
                     if (cohortId) {
                         insertPayload.cohort_id = cohortId;
                     }
                     
-                    const { data: participantData, error: participantError } = await supabaseClient
-                        .from('participants')
-                        .insert(insertPayload)
-                        .select('id')
-                        .single();
-                        
-                    if (participantError) {
-                        console.error('Error creating participant record:', participantError);
-                        win.alert('Error submitting survey. Please try again.');
+                    // Debug info about what's being inserted
+                    console.log('Creating participant record with:', {
+                        userId,
+                        surveyId: finalSurveyId,
+                        cohortId,
+                        completePayload: insertPayload
+                    });
+                    
+                    // Use more explicit error handling for the insert operation
+                    let response;
+                    try {
+                        response = await supabaseClient
+                            .from('participants')
+                            .insert(insertPayload)
+                            .select('id')
+                            .single();
+                    } catch (insertError) {
+                        console.error('Exception during insert operation:', insertError);
+                        win.alert('Database error: ' + (insertError.message || 'Unknown error'));
                         return;
                     }
                     
-                    participantId = participantData.id;
+                    // Check for errors in the response
+                    if (response.error) {
+                        console.error('Error response from Supabase:', response.error);
+                        
+                        // Check for RLS policy violations
+                        if (response.error.code === '42501') {
+                            console.error('RLS policy violation - insufficient privileges');
+                            win.alert('Permission denied: You do not have permission to create a participant record. This might be due to Row Level Security policies.');
+                        } else if (response.error.code === '23505') {
+                            console.error('Unique constraint violation - duplicate key');
+                            win.alert('A record already exists for this user and survey. Please try again with a different user or survey.');
+                        } else {
+                            win.alert('Error creating participant record: ' + response.error.message);
+                        }
+                        return;
+                    }
+                    
+                    // Success case
+                    if (!response.data || !response.data.id) {
+                        console.error('No data returned from successful insert');
+                        win.alert('Unexpected response from database. Please try again.');
+                        return;
+                    }
+                    
+                    console.log('Successfully created participant record:', response.data);
+                    
+                    participantId = response.data.id;
                     storage.setItem('futurelens_participant_id', participantId);
                 } catch (participantError) {
                     console.error('Exception creating participant record:', participantError);
-                    win.alert('Error creating participant record. Please try again.');
+                    win.alert('Error creating participant record: ' + (participantError.message || 'Unknown error'));
                     return;
+                }
+            } else {
+                console.log('Using existing participant ID:', participantId);
+                
+                // Double-check the participant record actually exists
+                try {
+                    const { data: existingParticipant, error: checkError } = await supabaseClient
+                        .from('participants')
+                        .select('id, user_id, cohort_id, survey_id')
+                        .eq('id', participantId)
+                        .single();
+                        
+                    if (checkError || !existingParticipant) {
+                        console.error('Error verifying existing participant:', checkError);
+                        console.warn('Stored participant ID not found in database, creating new record');
+                        
+                        // Clear the stored ID and reload to create a new participant
+                        storage.removeItem('futurelens_participant_id');
+                        win.location.reload();
+                        return;
+                    }
+                    
+                    console.log('Verified existing participant record:', existingParticipant);
+                } catch (checkError) {
+                    console.error('Exception checking participant record:', checkError);
                 }
             }
             
@@ -862,6 +975,22 @@ export function createSurvey(dependencies = {}) {
             let participantId = storage.getItem('futurelens_participant_id');
             if (!participantId) {
                 console.error('No participant ID found, cannot submit to Supabase');
+                
+                // Show what we do have in storage for debugging
+                console.log('Available localStorage keys:', Object.keys(localStorage));
+                
+                if (storage.getItem('cohort_id')) {
+                    console.log('Cohort ID in storage:', storage.getItem('cohort_id'));
+                }
+                
+                if (storage.getItem('survey_id')) {
+                    console.log('Survey ID in storage:', storage.getItem('survey_id'));
+                }
+                
+                if (storage.getItem('participant_id')) {
+                    console.log('User ID in storage:', storage.getItem('participant_id'));
+                }
+                
                 return;
             }
             
@@ -912,52 +1041,192 @@ export function createSurvey(dependencies = {}) {
     }
 
     async function init() {
-        console.log('Survey module initialized');
-        
-        // Get participant ID from storage
-        participantId = storage.getItem('participant_id');
-        if (!participantId) {
-            console.error('No participant ID found');
-            win.location.href = '/';
-            return;
-        }
-        
-        // Set flag to indicate the user has visited the welcome page
-        // This avoids redirecting back to welcome page if we came from there
-        if (win.document.referrer.includes('survey-welcome.html')) {
-            storage.setItem('visited_welcome_page', 'true');
-        }
-        
-        // Check if we have a saved survey in progress
-        const savedIndex = storage.getItem('currentQuestionIndex');
-        const savedSurvey = storage.getItem('currentSurvey');
-        
-        if (savedIndex && savedSurvey) {
-            // Resume existing survey
-            currentQuestionIndex = parseInt(savedIndex, 10);
-            surveyData = JSON.parse(savedSurvey);
-            questions = surveyData.statements || [];
-        } else {
-            // Start a new survey
-            // Get the survey ID from localStorage (set during the survey code entry step)
-            const storedSurveyId = storage.getItem('survey_id');
-            
-            if (storedSurveyId) {
-                console.log('Using survey ID from localStorage:', storedSurveyId);
-                surveyData = await fetchSurvey(storedSurveyId);
-                initSurvey(surveyData);
-            } else {
-                console.warn('No survey ID found in localStorage, falling back to latest survey');
-                surveyData = await fetchSurvey();
-                initSurvey(surveyData);
+        try {
+            // Add debug UI elements if in development mode
+            if (location.hostname === 'localhost' || location.hostname === '127.0.0.1') {
+                const debugContainer = win.document.createElement('div');
+                debugContainer.className = 'debug-container';
+                debugContainer.style.margin = '20px';
+                debugContainer.style.padding = '10px';
+                debugContainer.style.border = '1px solid #ccc';
+                debugContainer.style.backgroundColor = '#f8f8f8';
+                
+                const debugTitle = win.document.createElement('h3');
+                debugTitle.textContent = 'Debug Tools';
+                debugContainer.appendChild(debugTitle);
+                
+                // Add debug info
+                const debugInfo = win.document.createElement('div');
+                debugInfo.innerHTML = `
+                    <p><strong>LocalStorage Data:</strong></p>
+                    <ul>
+                        <li>cohort_id: ${localStorage.getItem('cohort_id') || 'Not set'}</li>
+                        <li>survey_id: ${localStorage.getItem('survey_id') || 'Not set'}</li>
+                        <li>participant_id (user): ${localStorage.getItem('participant_id') || 'Not set'}</li>
+                        <li>futurelens_participant_id: ${localStorage.getItem('futurelens_participant_id') || 'Not set'}</li>
+                    </ul>
+                `;
+                debugContainer.appendChild(debugInfo);
+                
+                // Add button to check participants in database
+                const checkParticipantsBtn = win.document.createElement('button');
+                checkParticipantsBtn.textContent = 'Check Participants Table';
+                checkParticipantsBtn.style.margin = '5px';
+                checkParticipantsBtn.addEventListener('click', async () => {
+                    try {
+                        const { data, error } = await supabaseClient
+                            .from('participants')
+                            .select('*')
+                            .limit(20);
+                            
+                        if (error) {
+                            console.error('Error checking participants:', error);
+                            alert('Error checking participants: ' + error.message);
+                        } else {
+                            console.log('All participants in database:', data);
+                            alert(`Found ${data?.length || 0} participants in database. See console for details.`);
+                        }
+                    } catch (e) {
+                        console.error('Exception checking participants:', e);
+                        alert('Exception: ' + e.message);
+                    }
+                });
+                debugContainer.appendChild(checkParticipantsBtn);
+                
+                // Add button to force create participant record
+                const forceCreateBtn = win.document.createElement('button');
+                forceCreateBtn.textContent = 'Force Create Participant';
+                forceCreateBtn.style.margin = '5px';
+                forceCreateBtn.addEventListener('click', async () => {
+                    try {
+                        const userId = localStorage.getItem('participant_id');
+                        const cohortId = localStorage.getItem('cohort_id');
+                        const surveyId = localStorage.getItem('survey_id');
+                        
+                        if (!userId || !surveyId) {
+                            alert('Missing required data: user_id or survey_id');
+                            return;
+                        }
+                        
+                        const payload = {
+                            user_id: userId,
+                            survey_id: surveyId
+                        };
+                        
+                        if (cohortId) {
+                            payload.cohort_id = cohortId;
+                        }
+                        
+                        console.log('Trying to create participant with:', payload);
+                        
+                        const { data, error } = await supabaseClient
+                            .from('participants')
+                            .insert(payload)
+                            .select()
+                            .single();
+                            
+                        if (error) {
+                            console.error('Error creating participant:', error);
+                            alert('Error creating participant: ' + error.message);
+                        } else {
+                            console.log('Successfully created participant:', data);
+                            localStorage.setItem('futurelens_participant_id', data.id);
+                            alert('Successfully created participant! ID: ' + data.id);
+                        }
+                    } catch (e) {
+                        console.error('Exception creating participant:', e);
+                        alert('Exception: ' + e.message);
+                    }
+                });
+                debugContainer.appendChild(forceCreateBtn);
+                
+                // Add button to verify survey record
+                const checkSurveyBtn = win.document.createElement('button');
+                checkSurveyBtn.textContent = 'Check Survey Record';
+                checkSurveyBtn.style.margin = '5px';
+                checkSurveyBtn.addEventListener('click', async () => {
+                    try {
+                        const surveyId = localStorage.getItem('survey_id');
+                        
+                        if (!surveyId) {
+                            alert('No survey ID found in localStorage');
+                            return;
+                        }
+                        
+                        const { data, error } = await supabaseClient
+                            .from('surveys')
+                            .select('*')
+                            .eq('id', surveyId)
+                            .single();
+                            
+                        if (error) {
+                            console.error('Error checking survey:', error);
+                            alert('Error checking survey: ' + error.message);
+                        } else {
+                            console.log('Survey record:', data);
+                            alert(`Found survey: ${data?.id}. Check console for details.`);
+                        }
+                    } catch (e) {
+                        console.error('Exception checking survey:', e);
+                        alert('Exception: ' + e.message);
+                    }
+                });
+                debugContainer.appendChild(checkSurveyBtn);
+                
+                // Add to DOM
+                win.document.body.appendChild(debugContainer);
             }
+            
+            console.log('Survey module initialized');
+            
+            // Get participant ID from storage
+            participantId = storage.getItem('participant_id');
+            if (!participantId) {
+                console.error('No participant ID found');
+                win.location.href = '/';
+                return;
+            }
+            
+            // Set flag to indicate the user has visited the welcome page
+            // This avoids redirecting back to welcome page if we came from there
+            if (win.document.referrer.includes('survey-welcome.html')) {
+                storage.setItem('visited_welcome_page', 'true');
+            }
+            
+            // Check if we have a saved survey in progress
+            const savedIndex = storage.getItem('currentQuestionIndex');
+            const savedSurvey = storage.getItem('currentSurvey');
+            
+            if (savedIndex && savedSurvey) {
+                // Resume existing survey
+                currentQuestionIndex = parseInt(savedIndex, 10);
+                surveyData = JSON.parse(savedSurvey);
+                questions = surveyData.statements || [];
+            } else {
+                // Start a new survey
+                // Get the survey ID from localStorage (set during the survey code entry step)
+                const storedSurveyId = storage.getItem('survey_id');
+                
+                if (storedSurveyId) {
+                    console.log('Using survey ID from localStorage:', storedSurveyId);
+                    surveyData = await fetchSurvey(storedSurveyId);
+                    initSurvey(surveyData);
+                } else {
+                    console.warn('No survey ID found in localStorage, falling back to latest survey');
+                    surveyData = await fetchSurvey();
+                    initSurvey(surveyData);
+                }
+            }
+            
+            // Setup event listeners
+            setupEventListeners();
+            
+            // Display the first/current question
+            displayNextQuestion();
+        } catch (error) {
+            console.error('Error initializing survey:', error);
+            win.alert('Error initializing survey. Please try again later.');
         }
-        
-        // Setup event listeners
-        setupEventListeners();
-        
-        // Display the first/current question
-        displayNextQuestion();
     }
 
     return {
