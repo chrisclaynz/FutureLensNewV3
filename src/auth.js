@@ -16,9 +16,11 @@ export const auth = {
         if (loginForm) {
             loginForm.addEventListener('submit', (e) => this.handleLogin(e));
         }
+        /* Temporarily disabled sign-up functionality
         if (signupForm) {
             signupForm.addEventListener('submit', (e) => this.handleSignup(e));
         }
+        */
         if (surveyCodeForm) {
             surveyCodeForm.addEventListener('submit', (e) => this.handleSurveyCode(e));
         }

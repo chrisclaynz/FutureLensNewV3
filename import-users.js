@@ -2,12 +2,25 @@ import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
 
 // Supabase configuration
-const SUPABASE_URL = 'https://noxrttgtvhtoiejujoyd.supabase.co';
-const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_KEY;
+const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://noxrttgtvhtoiejujoyd.supabase.co';
+const SUPABASE_SERVICE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+console.log('Using Supabase URL:', SUPABASE_URL);
+console.log('Service key available:', !!SUPABASE_SERVICE_KEY);
+if (SUPABASE_SERVICE_KEY) {
+  console.log('Service key length:', SUPABASE_SERVICE_KEY.length);
+  console.log('Service key first 5 chars:', SUPABASE_SERVICE_KEY.substring(0, 5));
+}
 
 // Check for service key
 if (!SUPABASE_SERVICE_KEY) {
-  console.error('Error: SUPABASE_SERVICE_KEY required');
+  console.error('Error: SUPABASE_SERVICE_ROLE_KEY required');
+  process.exit(1);
+}
+
+// Check for URL
+if (!SUPABASE_URL) {
+  console.error('Error: VITE_SUPABASE_URL required');
   process.exit(1);
 }
 
