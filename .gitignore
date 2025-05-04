@@ -26,4 +26,4 @@ yarn-error.log*
 # Build
 dist/
 build/
-dist1/ 
+dist1/ *.csv
