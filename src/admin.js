@@ -3,7 +3,7 @@ const dashboardSection = document.getElementById('dashboard-section');
 const logoutBtn = document.getElementById('logout-btn');
 const userRoleDisplay = document.getElementById('user-role');
 const inviteCohortSelect = document.getElementById('invite-cohort-select');
-const searchCohortSelect = document.getElementById('search-cohort-select');
+const cohortCheckboxes = document.getElementById('cohort-checkboxes');
 const searchBtn = document.getElementById('search-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 const resultsContainer = document.getElementById('results-container');
@@ -18,8 +18,8 @@ const tabContents = document.querySelectorAll('.tab-content');
 
 // State
 let currentUser = null;
-let currentCohort = null;
-let currentSurvey = null;
+let selectedCohorts = []; // Changed from single cohort to array of cohorts
+let currentSurveys = {}; // Map of cohort IDs to their surveys
 let studentIdentificationVisible = true;
 let allResponses = []; // Store all responses for the cohort
 
@@ -153,8 +153,8 @@ async function handleLogout() {
         
         // Reset state
         currentUser = null;
-        currentCohort = null;
-        currentSurvey = null;
+        selectedCohorts = [];
+        currentSurveys = {};
         
         // Redirect to main login page
         window.location.href = '/';
@@ -205,11 +205,23 @@ async function loadTeacherCohorts() {
             console.warn('No cohort IDs found in user profile. Creating test data for development.');
             // Add placeholder options
             const testCohortOptions = `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-test-1" name="cohort" value="test-cohort-1">
+                    <label for="cohort-test-1">Test Cohort 1</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-test-2" name="cohort" value="test-cohort-2">
+                    <label for="cohort-test-2">Test Cohort 2</label>
+                </div>
+            `;
+            cohortCheckboxes.innerHTML = testCohortOptions;
+            
+            // Keep the select element for invites
+            const testSelectOptions = `
                 <option value="test-cohort-1">Test Cohort 1</option>
                 <option value="test-cohort-2">Test Cohort 2</option>
             `;
-            inviteCohortSelect.innerHTML = testCohortOptions;
-            searchCohortSelect.innerHTML = testCohortOptions;
+            inviteCohortSelect.innerHTML = testSelectOptions;
             return;
         }
 
@@ -225,33 +237,91 @@ async function loadTeacherCohorts() {
             console.error('Error loading cohorts from database:', error);
             // Add placeholder options since database call failed
             const testCohortOptions = `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-dev-1" name="cohort" value="dev-cohort-1">
+                    <label for="cohort-dev-1">Development Cohort 1</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-dev-2" name="cohort" value="dev-cohort-2">
+                    <label for="cohort-dev-2">Development Cohort 2</label>
+                </div>
+            `;
+            cohortCheckboxes.innerHTML = testCohortOptions;
+            
+            // Keep the select element for invites
+            const testSelectOptions = `
                 <option value="dev-cohort-1">Development Cohort 1</option>
                 <option value="dev-cohort-2">Development Cohort 2</option>
             `;
-            inviteCohortSelect.innerHTML = testCohortOptions;
-            searchCohortSelect.innerHTML = testCohortOptions;
+            inviteCohortSelect.innerHTML = testSelectOptions;
             return;
         }
 
         console.log('Loaded cohorts:', cohorts);
 
         if (cohorts && cohorts.length > 0) {
-            // Update both cohort select elements
-            const cohortOptions = cohorts
+            // Update select element for invites
+            const selectOptions = cohorts
                 .map(cohort => `<option value="${cohort.id}">${cohort.label} (${cohort.code})</option>`)
                 .join('');
+            inviteCohortSelect.innerHTML = selectOptions;
+            
+            // Update checkboxes for cohort selection
+            const checkboxItems = cohorts
+                .map(cohort => `
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="cohort-${cohort.id}" name="cohort" value="${cohort.id}">
+                        <label for="cohort-${cohort.id}">${cohort.label} (${cohort.code})</label>
+                    </div>
+                `)
+                .join('');
+            cohortCheckboxes.innerHTML = checkboxItems;
+            
+            // Add selected cohorts display area
+            const selectedDisplay = document.createElement('div');
+            selectedDisplay.id = 'selected-cohorts-display';
+            selectedDisplay.className = 'selected-cohorts';
+            selectedDisplay.innerHTML = 'No cohorts selected';
+            cohortCheckboxes.after(selectedDisplay);
+            
+            // Add event listeners to update selected display
+            const checkboxes = document.querySelectorAll('input[name="cohort"]');
+            checkboxes.forEach(checkbox => {
+                checkbox.addEventListener('change', updateSelectedCohortsDisplay);
+            });
 
-            inviteCohortSelect.innerHTML = cohortOptions;
-            searchCohortSelect.innerHTML = cohortOptions;
+            // Add cohort survey mapping to each checkbox for validation
+            const cohortSurveyMapping = {};
+            cohorts.forEach(cohort => {
+                cohortSurveyMapping[cohort.id] = cohort.survey_id;
+            });
+            
+            // Store this mapping in a data attribute on the checkbox container
+            const checkboxContainer = document.getElementById('cohort-checkboxes');
+            if (checkboxContainer) {
+                checkboxContainer.setAttribute('data-cohort-surveys', JSON.stringify(cohortSurveyMapping));
+            }
         } else {
             console.warn('No cohorts found for the given IDs');
             // Add placeholder options
             const testCohortOptions = `
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-no-results-1" name="cohort" value="no-results-1">
+                    <label for="cohort-no-results-1">No Assigned Cohorts (Test 1)</label>
+                </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="cohort-no-results-2" name="cohort" value="no-results-2">
+                    <label for="cohort-no-results-2">No Assigned Cohorts (Test 2)</label>
+                </div>
+            `;
+            cohortCheckboxes.innerHTML = testCohortOptions;
+            
+            // Keep the select element for invites
+            const testSelectOptions = `
                 <option value="no-results-1">No Assigned Cohorts (Test 1)</option>
                 <option value="no-results-2">No Assigned Cohorts (Test 2)</option>
             `;
-            inviteCohortSelect.innerHTML = testCohortOptions;
-            searchCohortSelect.innerHTML = testCohortOptions;
+            inviteCohortSelect.innerHTML = testSelectOptions;
         }
     } catch (error) {
         console.error('Error loading cohorts:', error);
@@ -260,55 +330,210 @@ async function loadTeacherCohorts() {
     }
 }
 
-async function handleSearch() {
-    const cohortId = searchCohortSelect.value;
+// Function to update the selected cohorts display
+function updateSelectedCohortsDisplay() {
+    const selectedDisplay = document.getElementById('selected-cohorts-display');
+    if (!selectedDisplay) return;
+    
+    const checkboxes = document.querySelectorAll('input[name="cohort"]:checked');
+    const selectedLabels = Array.from(checkboxes).map(cb => {
+        const label = document.querySelector(`label[for="${cb.id}"]`);
+        return label ? label.textContent : cb.value;
+    });
+    
+    if (selectedLabels.length === 0) {
+        selectedDisplay.innerHTML = 'No cohorts selected';
+        selectedDisplay.className = 'selected-cohorts';
+        document.getElementById('search-btn').disabled = false;
+        return;
+    } else {
+        selectedDisplay.innerHTML = `<strong>Selected:</strong> ${selectedLabels.join(', ')}`;
+    }
+    
+    // Check if selected cohorts have compatible surveys
+    const selectedCohortIds = Array.from(checkboxes).map(cb => cb.value);
+    const isSurveyCompatible = validateSurveyCompatibility(selectedCohortIds);
+    
+    if (!isSurveyCompatible.valid) {
+        // Show warning in the selected display
+        selectedDisplay.className = 'selected-cohorts warning';
+        selectedDisplay.innerHTML += `<div class="warning-message">Warning: These cohorts are linked to different surveys. Comparing results across different surveys may not be meaningful.</div>`;
+        
+        // Add tooltip with incompatible cohorts
+        if (isSurveyCompatible.incompatibleGroups.length > 0) {
+            const tooltipHtml = isSurveyCompatible.incompatibleGroups.map(group => 
+                `<div>${group.join(', ')}</div>`
+            ).join('');
+            
+            const warningIcon = document.createElement('span');
+            warningIcon.className = 'warning-icon';
+            warningIcon.innerHTML = '⚠️';
+            warningIcon.title = 'Incompatible surveys';
+            selectedDisplay.querySelector('.warning-message').prepend(warningIcon);
+        }
+        
+        // Disable search button to prevent searching across different surveys
+        document.getElementById('search-btn').disabled = true;
+    } else {
+        // Update classes and enable search
+        selectedDisplay.className = 'selected-cohorts';
+        document.getElementById('search-btn').disabled = false;
+    }
+}
 
-    if (!cohortId) {
-        alert('Please select a cohort');
+// Function to validate survey compatibility across selected cohorts
+function validateSurveyCompatibility(selectedCohortIds) {
+    // Try to get the cohort-survey mapping
+    const checkboxContainer = document.getElementById('cohort-checkboxes');
+    if (!checkboxContainer) {
+        return { valid: true }; // Can't validate, so assume valid
+    }
+    
+    const mappingStr = checkboxContainer.getAttribute('data-cohort-surveys');
+    if (!mappingStr) {
+        return { valid: true }; // No mapping data, assume valid
+    }
+    
+    try {
+        const cohortSurveyMapping = JSON.parse(mappingStr);
+        
+        // Group cohorts by survey ID
+        const surveyGroups = {};
+        
+        selectedCohortIds.forEach(cohortId => {
+            const surveyId = cohortSurveyMapping[cohortId];
+            if (!surveyId) return; // Skip if no survey ID
+            
+            if (!surveyGroups[surveyId]) {
+                surveyGroups[surveyId] = [];
+            }
+            
+            // Get readable cohort label for display
+            const checkboxEl = document.getElementById(`cohort-${cohortId}`);
+            const labelEl = checkboxEl ? document.querySelector(`label[for="cohort-${cohortId}"]`) : null;
+            const cohortLabel = labelEl ? labelEl.textContent : cohortId;
+            
+            surveyGroups[surveyId].push(cohortLabel);
+        });
+        
+        // Check if all cohorts belong to the same survey
+        const surveyIds = Object.keys(surveyGroups);
+        const valid = surveyIds.length <= 1;
+        
+        return {
+            valid,
+            incompatibleGroups: Object.values(surveyGroups)
+        };
+    } catch (e) {
+        console.error('Error parsing cohort-survey mapping:', e);
+        return { valid: true }; // In case of error, assume valid
+    }
+}
+
+async function handleSearch() {
+    // Get all checked cohort checkboxes
+    const checkedCohorts = document.querySelectorAll('input[name="cohort"]:checked');
+    const selectedCohortIds = Array.from(checkedCohorts).map(checkbox => checkbox.value);
+
+    if (selectedCohortIds.length === 0) {
+        alert('Please select at least one cohort');
+        return;
+    }
+    
+    // Verify survey compatibility before proceeding
+    const isSurveyCompatible = validateSurveyCompatibility(selectedCohortIds);
+    if (!isSurveyCompatible.valid) {
+        alert('Cannot search across cohorts with different surveys. Please select cohorts from the same survey.');
         return;
     }
 
     try {
-        currentCohort = cohortId;
+        selectedCohorts = selectedCohortIds;
         
-        console.log(`Searching for results with cohort ID: ${cohortId}`);
+        console.log(`Searching for results with cohort IDs: ${selectedCohortIds.join(', ')}`);
         
-        // Get the survey ID from the cohort
-        const { data: cohortData, error: cohortError } = await supabaseClient
+        // Get the survey IDs from the cohorts
+        const { data: cohortsData, error: cohortError } = await supabaseClient
             .from('cohorts')
             .select('id, code, survey_id')
-            .eq('id', cohortId)
-            .single();
+            .in('id', selectedCohortIds);
             
-        if (cohortError || !cohortData) {
+        if (cohortError || !cohortsData || cohortsData.length === 0) {
             console.error('Error fetching cohort data:', cohortError);
             alert('Error: Could not fetch cohort data');
             return;
         }
         
-        if (!cohortData.survey_id) {
-            console.warn('No survey associated with this cohort');
-            alert('This cohort does not have an associated survey');
+        // Check if any cohorts are missing survey_id
+        const missingCohorts = cohortsData.filter(c => !c.survey_id);
+        if (missingCohorts.length > 0) {
+            console.warn('Some cohorts do not have an associated survey:', missingCohorts);
+            if (missingCohorts.length === cohortsData.length) {
+                alert('None of the selected cohorts have associated surveys');
+                return;
+            }
+            alert(`Note: ${missingCohorts.length} cohort(s) do not have associated surveys and will be skipped.`);
+        }
+        
+        // Get cohorts with valid survey IDs
+        const validCohorts = cohortsData.filter(c => c.survey_id);
+        if (validCohorts.length === 0) {
+            console.warn('No valid cohorts with surveys found');
+            alert('No valid cohorts with surveys found');
             return;
         }
         
-        // Get the survey using the cohort's survey_id
-        const { data: surveyData, error: surveyError } = await supabaseClient
+        // Get all the surveys at once
+        const surveyIds = validCohorts.map(c => c.survey_id);
+        const { data: surveysData, error: surveyError } = await supabaseClient
             .from('surveys')
             .select('id, json_config')
-            .eq('id', cohortData.survey_id)
-            .single();
+            .in('id', surveyIds);
             
-        if (surveyError || !surveyData) {
+        if (surveyError) {
             console.error('Error fetching survey data:', surveyError);
             alert('Error: Could not fetch survey data');
             return;
         }
         
-        // Store the current survey
-        currentSurvey = surveyData;
+        if (!surveysData || surveysData.length === 0) {
+            console.warn('No surveys found for the selected cohorts');
+            alert('No surveys found for the selected cohorts');
+            return;
+        }
         
-        console.log('Using cohort ID:', currentCohort, 'and survey ID:', currentSurvey.id);
+        // Map surveys to their respective cohorts
+        currentSurveys = {};
+        validCohorts.forEach(cohort => {
+            const survey = surveysData.find(s => s.id === cohort.survey_id);
+            if (survey) {
+                currentSurveys[cohort.id] = survey;
+            }
+        });
+        
+        console.log('Using cohorts and surveys:', currentSurveys);
+        
+        // Log the structure of the first survey's json_config to debug
+        const firstSurveyId = Object.values(currentSurveys)[0]?.id;
+        if (firstSurveyId) {
+            console.log('First survey ID:', firstSurveyId);
+            console.log('First survey json_config:', Object.values(currentSurveys)[0]?.json_config);
+            
+            const jsonConfig = Object.values(currentSurveys)[0]?.json_config;
+            if (jsonConfig) {
+                console.log('Survey has continua:', !!jsonConfig.continua);
+                console.log('Survey has statements:', !!jsonConfig.statements);
+                
+                if (jsonConfig.continua) {
+                    console.log('Continua keys:', Object.keys(jsonConfig.continua));
+                }
+                
+                if (jsonConfig.statements) {
+                    console.log('Number of statements:', jsonConfig.statements.length);
+                    console.log('Sample statement:', jsonConfig.statements[0]);
+                }
+            }
+        }
         
         try {
             await loadCohortResults();
@@ -434,7 +659,7 @@ async function loadCohortResults() {
         loadingIndicator.style.display = 'block';
         resultsContainer.classList.add('hidden');
         
-        console.log('Loading results for cohort:', currentCohort, 'and survey:', currentSurvey?.id);
+        console.log('Loading results for cohorts:', selectedCohorts, 'and surveys:', currentSurveys);
         
         // Check the mapping between cohort and survey in the database
         try {
@@ -451,7 +676,7 @@ async function loadCohortResults() {
             console.error('Exception in cohort-survey check:', e);
         }
         
-        // First, get all participants for this cohort/survey
+        // First, get all participants for these cohorts/surveys
         const { data: allParticipants, error: participantError } = await supabaseClient
             .from('participants')
             .select('id, user_id, cohort_id, survey_id');
@@ -478,30 +703,30 @@ async function loadCohortResults() {
             console.log('Cohorts used by participants:', cohortsData);
         }
         
-        // Find details of our specific cohort
+        // Find details of our specific cohorts
         let cohortDetails = null;
         if (cohortsData) {
-            cohortDetails = cohortsData.find(c => c.id === currentCohort);
-            if (cohortDetails) {
+            cohortDetails = cohortsData.filter(c => selectedCohorts.includes(c.id));
+            if (cohortDetails.length > 0) {
                 console.log('Cohort details:', cohortDetails);
             } else {
-                console.warn('Current cohort not found in database:', currentCohort);
+                console.warn('Current cohorts not found in database:', selectedCohorts);
             }
         }
         
-        // Filter participants by the selected cohort and survey
-        const surveyParticipants = allParticipants.filter(p => p.survey_id === currentSurvey.id);
-        const cohortParticipants = allParticipants.filter(p => p.cohort_id === currentCohort);
+        // Filter participants by the selected cohorts and surveys
+        const surveyParticipants = allParticipants.filter(p => selectedCohorts.includes(p.cohort_id) && p.survey_id);
+        const cohortParticipants = allParticipants.filter(p => selectedCohorts.includes(p.cohort_id));
         const participants = allParticipants.filter(p => 
-            p.cohort_id === currentCohort && 
-            p.survey_id === currentSurvey.id
+            selectedCohorts.includes(p.cohort_id) && 
+            p.survey_id
         );
         
-        console.log('Found', surveyParticipants.length, 'participants for survey ID', currentSurvey.id, 'across all cohorts:', surveyParticipants);
-        console.log('Found', cohortParticipants.length, 'participants for cohort ID', currentCohort, 'across all surveys:', cohortParticipants);
+        console.log('Found', surveyParticipants.length, 'participants for surveys across selected cohorts:', surveyParticipants);
+        console.log('Found', cohortParticipants.length, 'participants for selected cohorts:', cohortParticipants);
         
         if (!participants || participants.length === 0) {
-            // No participants found for this cohort/survey
+            // No participants found for these cohorts/surveys
             loadingIndicator.style.display = 'none';
             resultsContainer.classList.remove('hidden');
             
@@ -509,16 +734,16 @@ async function loadCohortResults() {
             cohortAverages.innerHTML = `
                 <div class="no-results">
                     <h4>No Participants Found</h4>
-                    <p>No students have taken this survey in this cohort yet.</p>
-                    <p>Cohort: ${cohortDetails?.label || currentCohort}</p>
-                    <p>Survey: ${currentSurvey?.code || currentSurvey?.id}</p>
+                    <p>No students have taken these surveys in these cohorts yet.</p>
+                    <p>Cohorts: ${selectedCohorts.map(id => cohortsData.find(c => c.id === id)?.label || id).join(', ')}</p>
+                    <p>Surveys: ${selectedCohorts.map(id => currentSurveys[id]?.code || id).join(', ')}</p>
                 </div>
             `;
             incompleteSurveys.innerHTML = '';
             return;
         }
         
-        console.log('Found', participants.length, 'participants for this cohort/survey');
+        console.log('Found', participants.length, 'participants for these cohorts/surveys');
         
         // Get participant IDs for use in the responses query
         const participantIds = participants.map(p => p.id);
@@ -554,7 +779,7 @@ async function loadCohortResults() {
         // Store responses in the global variable for details view
         allResponses = responses || [];
         
-        console.log(`Found ${responses?.length || 0} responses for participants in this cohort/survey`);
+        console.log(`Found ${responses?.length || 0} responses for participants in these cohorts/surveys`);
         
         if (!responses || responses.length === 0) {
             // No responses found for these participants
@@ -564,7 +789,7 @@ async function loadCohortResults() {
             cohortAverages.innerHTML = `
                 <div class="no-results">
                     <h4>No Responses Found</h4>
-                    <p>Participants exist for this cohort and survey, but no responses have been recorded.</p>
+                    <p>Participants exist for these cohorts and surveys, but no responses have been recorded.</p>
                     <p>This could mean students have started but not completed their surveys.</p>
                 </div>
             `;
@@ -590,10 +815,10 @@ async function loadCohortResults() {
         try {
             const { data: participantEmails } = await fetchParticipantEmails(participants);
             
-            // Determine required questions for this survey
+            // Determine required questions for these surveys
             let requiredQuestionCount = 0;
             try {
-                const surveyQuestions = currentSurvey?.json_config?.questions || [];
+                const surveyQuestions = currentSurveys[selectedCohorts[0]]?.json_config?.questions || [];
                 requiredQuestionCount = surveyQuestions.filter(q => q.required).length;
             } catch (e) {
                 console.error('Error determining required questions:', e);
@@ -714,7 +939,174 @@ function displayCohortAverages(stats, title = 'Cohort Overview') {
             return;
         }
         
-        // Create stat cards for each statistic
+        // Get the survey configuration from the first selected cohort
+        const surveyData = currentSurveys[selectedCohorts[0]];
+        if (!surveyData) {
+            console.error('No survey data found for cohort:', selectedCohorts[0]);
+            cohortAverages.innerHTML = '<p>Survey configuration not found.</p>';
+            return;
+        }
+        
+        // Access the json_config property which contains the survey structure
+        const surveyConfig = surveyData.json_config || {};
+        console.log('Survey config:', surveyConfig);
+        
+        // Get continua and statements from survey config
+        const continua = surveyConfig.continua || {};
+        const statements = surveyConfig.statements || [];
+        
+        // Check if we have continuum data
+        const hasContinuaData = Object.keys(continua).length > 0;
+        
+        if (hasContinuaData) {
+            console.log('Found continua data in survey config:', continua);
+        } else {
+            console.warn('No continua found in survey configuration');
+        }
+        
+        // Group stats by continuum or infer grouping from question keys
+        const continuaStats = {};
+        
+        if (hasContinuaData && statements.length > 0) {
+            // MATCHING APPROACH: Try to match each stat to its continuum using statements
+            
+            // First, build a mapping of question_key to continuum and alignment
+            const questionContinuumMap = {};
+            statements.forEach(statement => {
+                if (statement.id && statement.continuum) {
+                    questionContinuumMap[statement.id] = {
+                        continuum: statement.continuum,
+                        alignment: statement.alignment || 'left'
+                    };
+                }
+            });
+            
+            console.log('Question to continuum mapping:', questionContinuumMap);
+            
+            // Initialize each continuum
+            Object.keys(continua).forEach(continuumKey => {
+                continuaStats[continuumKey] = {
+                    name: continua[continuumKey].name || continuumKey,
+                    labels: continua[continuumKey].labels || { left: 'Left', right: 'Right' },
+                    scores: [],
+                    dontUnderstandPercentage: 0,
+                    average: 0,
+                    details: []
+                };
+            });
+            
+            // Process each stat and assign to proper continuum
+            stats.forEach(stat => {
+                const mapping = questionContinuumMap[stat.question_key];
+                if (mapping && mapping.continuum) {
+                    const continuumKey = mapping.continuum;
+                    
+                    // Only process if this continuum is in our survey
+                    if (continuaStats[continuumKey]) {
+                        // Apply value adjustment based on alignment
+                        let value = stat.average;
+                        
+                        // If alignment is "right", reverse the value for consistent scoring
+                        if (mapping.alignment === 'right') {
+                            value = -value; // Invert the value
+                        }
+                        
+                        continuaStats[continuumKey].scores.push(value);
+                        continuaStats[continuumKey].details.push(stat);
+                    }
+                }
+            });
+            
+            // Calculate averages for each continuum
+            Object.keys(continuaStats).forEach(continuumKey => {
+                const scores = continuaStats[continuumKey].scores;
+                if (scores.length > 0) {
+                    const sum = scores.reduce((a, b) => a + b, 0);
+                    continuaStats[continuumKey].average = sum / scores.length;
+                }
+            });
+        } else {
+            // FALLBACK APPROACH: Infer groups from question keys (e.g., rules_energy_5 → rules_energy)
+            const groupedStats = {};
+            
+            // First pass: group stats by inferred category
+            stats.forEach(stat => {
+                // Extract the base category from question_key (e.g., "rules_energy" from "rules_energy_5")
+                const parts = stat.question_key.split('_');
+                if (parts.length >= 2) {
+                    // Use first two parts as the category (e.g., "rules_energy")
+                    const category = `${parts[0]}_${parts[1]}`;
+                    
+                    if (!groupedStats[category]) {
+                        groupedStats[category] = [];
+                    }
+                    
+                    groupedStats[category].push(stat);
+                }
+            });
+            
+            // Second pass: create continuum stats from groups
+            Object.keys(groupedStats).forEach(category => {
+                const categoryStats = groupedStats[category];
+                
+                // Calculate average for this category
+                let sum = 0;
+                let count = 0;
+                let dontUnderstandSum = 0;
+                
+                categoryStats.forEach(stat => {
+                    sum += stat.average;
+                    count++;
+                    dontUnderstandSum += stat.dontUnderstandPercentage;
+                });
+                
+                const categoryAverage = count > 0 ? sum / count : 0;
+                const dontUnderstandAvg = count > 0 ? dontUnderstandSum / count : 0;
+                
+                // Format category name (e.g., "rules_energy" → "Rules Energy")
+                const formattedName = category
+                    .split('_')
+                    .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+                    .join(' ');
+                
+                // Create a synthetic continuum for this category
+                continuaStats[category] = {
+                    name: formattedName,
+                    labels: {
+                        left: 'Negative',
+                        right: 'Positive'
+                    },
+                    scores: categoryStats.map(s => s.average),
+                    average: categoryAverage,
+                    dontUnderstandPercentage: dontUnderstandAvg,
+                    details: categoryStats
+                };
+            });
+        }
+        
+        // Create the continuum visualization container
+        const continuaContainer = document.createElement('div');
+        continuaContainer.className = 'continuum-grid';
+        
+        // Create visualization for each continuum
+        Object.keys(continuaStats).forEach(continuumKey => {
+            const continuum = continuaStats[continuumKey];
+            const continuumElement = createContinuumVisual(continuum, continuumKey);
+            continuaContainer.appendChild(continuumElement);
+        });
+        
+        // Add the container to the cohort averages section
+        cohortAverages.appendChild(continuaContainer);
+        
+        // Add detailed stats after the visualizations
+        const detailedStatsContainer = document.createElement('div');
+        detailedStatsContainer.className = 'detailed-stats';
+        detailedStatsContainer.innerHTML = '<h4>Detailed Statistics</h4>';
+        
+        // Create stat cards for each statistic (old view)
+        const statCardsContainer = document.createElement('div');
+        statCardsContainer.className = 'stat-cards-container';
+        
         stats.forEach(stat => {
             const statCard = document.createElement('div');
             statCard.className = 'stat-card';
@@ -749,11 +1141,99 @@ function displayCohortAverages(stats, title = 'Cohort Overview') {
             statCard.appendChild(detailsBtn);
             
             // Add card to container
-            cohortAverages.appendChild(statCard);
+            statCardsContainer.appendChild(statCard);
         });
+        
+        detailedStatsContainer.appendChild(statCardsContainer);
+        cohortAverages.appendChild(detailedStatsContainer);
     } else {
         console.error('cohortAverages element not found');
     }
+}
+
+// Helper function to create a visual representation of a continuum
+function createContinuumVisual(continuum, continuumKey) {
+    const percentPosition = ((continuum.average + 2) / 4) * 100;
+    const avgValue = continuum.average;
+    
+    // Determine if this is an inferred continuum (has default left/right labels)
+    const isInferred = continuum.labels.left === 'Negative' && continuum.labels.right === 'Positive';
+    
+    const leftLabel = continuum.labels?.left || 'Left';
+    const rightLabel = continuum.labels?.right || 'Right';
+    
+    // Generate a perspective statement
+    let perspectiveStatement = "";
+    if (isInferred) {
+        // For inferred continuums, use simpler statements
+        if (avgValue <= -1.5) {
+            perspectiveStatement = `This cohort responds primarily <strong>negatively</strong> in this area.`;
+        } else if (avgValue <= -0.75) {
+            perspectiveStatement = `This cohort tends toward <strong>disagreement</strong> in this area.`;
+        } else if (avgValue < 0) {
+            perspectiveStatement = `This cohort <strong>slightly</strong> tends toward disagreement in this area.`;
+        } else if (avgValue === 0) {
+            perspectiveStatement = `This cohort has a <strong>balanced</strong> perspective in this area.`;
+        } else if (avgValue <= 0.75) {
+            perspectiveStatement = `This cohort <strong>slightly</strong> tends toward agreement in this area.`;
+        } else if (avgValue <= 1.5) {
+            perspectiveStatement = `This cohort tends toward <strong>agreement</strong> in this area.`;
+        } else {
+            perspectiveStatement = `This cohort responds primarily <strong>positively</strong> in this area.`;
+        }
+    } else {
+        // For defined continuums, use the original statements with explicit spaces
+        if (avgValue <= -1.5) {
+            perspectiveStatement = `This cohort <strong>strongly</strong> leans towards <strong>${leftLabel}</strong>.`;
+        } else if (avgValue <= -0.75) {
+            perspectiveStatement = `This cohort <strong>moderately</strong> leans towards <strong>${leftLabel}</strong>.`;
+        } else if (avgValue < 0) {
+            perspectiveStatement = `This cohort <strong>slightly</strong> leans towards <strong>${leftLabel}</strong>.`;
+        } else if (avgValue === 0) {
+            perspectiveStatement = `This cohort has a <strong>balanced</strong> perspective between <strong>${leftLabel}</strong> and <strong>${rightLabel}</strong>.`;
+        } else if (avgValue <= 0.75) {
+            perspectiveStatement = `This cohort <strong>slightly</strong> leans towards <strong>${rightLabel}</strong>.`;
+        } else if (avgValue <= 1.5) {
+            perspectiveStatement = `This cohort <strong>moderately</strong> leans towards <strong>${rightLabel}</strong>.`;
+        } else {
+            perspectiveStatement = `This cohort <strong>strongly</strong> leans towards <strong>${rightLabel}</strong>.`;
+        }
+    }
+    
+    // Get the average value to display
+    const displayAverage = avgValue.toFixed(2);
+    
+    // Create the continuum visualization element
+    const continuumElement = document.createElement('div');
+    continuumElement.className = 'continuum-result';
+    
+    // Create the inner HTML with controlled spacing
+    const innerHTML = `
+        <h3>${continuum.name}</h3>
+        <p class="perspective-statement-brief">${perspectiveStatement}</p>
+        <div class="continuum-scale">
+            <div class="continuum-left">${leftLabel}</div>
+            <div class="continuum-right">${rightLabel}</div>
+            <div class="continuum-marker" style="left: ${percentPosition}%"></div>
+        </div>
+        <div class="average-value">Average: ${displayAverage}</div>
+        <div class="text-center">
+            <button class="details-btn" data-continuum="${continuumKey}">View Details</button>
+        </div>
+    `;
+    
+    continuumElement.innerHTML = innerHTML;
+    
+    // Add event listener to the details button
+    continuumElement.querySelector('.details-btn').addEventListener('click', () => {
+        // Show detailed stats for this continuum
+        const detailedStats = continuum.details;
+        if (detailedStats && detailedStats.length > 0) {
+            showContinuumDetails(detailedStats[0].question_key); // Show details for first question in this continuum
+        }
+    });
+    
+    return continuumElement;
 }
 
 function displayIncompleteSurveys(incomplete) {
@@ -787,17 +1267,16 @@ async function handleStudentSearch(e) {
     }
     
     try {
-        console.log(`Searching for students matching "${searchTerm}" in cohort ${currentCohort}`);
+        console.log(`Searching for students matching "${searchTerm}" in cohorts ${selectedCohorts.join(', ')}`);
         
-        // Get all participants for this cohort/survey and then filter locally
+        // Get all participants for these cohorts/surveys and then filter locally
         // This avoids issues with RLS policies and textSearch compatibility
         const { data: participants, error } = await supabaseClient
             .from('participants')
             .select(`
                 id, user_id
             `)
-            .eq('cohort_id', currentCohort)
-            .eq('survey_id', currentSurvey.id);
+            .in('cohort_id', selectedCohorts);
         
         if (error) {
             console.error('Error fetching participants:', error);
@@ -890,22 +1369,22 @@ async function loadStudentResults(participantId) {
     try {
         console.log('Loading results for participant:', participantId);
         
-        // First verify this participant belongs to the current cohort
+        // First verify this participant belongs to one of the current cohorts
         const { data: participant, error: participantError } = await supabaseClient
             .from('participants')
             .select('id, user_id, cohort_id, survey_id')
             .eq('id', participantId)
-            .eq('cohort_id', currentCohort) // Make sure participant is in the current cohort
+            .in('cohort_id', selectedCohorts) // Make sure participant is in one of the selected cohorts
             .single();
             
         if (participantError) {
             console.error('Error verifying participant:', participantError);
-            throw new Error('Could not verify participant belongs to this cohort');
+            throw new Error('Could not verify participant belongs to the selected cohorts');
         }
         
         if (!participant) {
             console.error('Participant not found or not authorized');
-            throw new Error('Participant not found in this cohort');
+            throw new Error('Participant not found in the selected cohorts');
         }
         
         // Now get the responses for this participant
