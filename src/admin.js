@@ -4,7 +4,6 @@ const logoutBtn = document.getElementById('logout-btn');
 const userRoleDisplay = document.getElementById('user-role');
 const inviteCohortSelect = document.getElementById('invite-cohort-select');
 const searchCohortSelect = document.getElementById('search-cohort-select');
-const surveyCodeInput = document.getElementById('survey-code');
 const searchBtn = document.getElementById('search-btn');
 const loadingIndicator = document.getElementById('loading-indicator');
 const resultsContainer = document.getElementById('results-container');
@@ -263,67 +262,52 @@ async function loadTeacherCohorts() {
 
 async function handleSearch() {
     const cohortId = searchCohortSelect.value;
-    const surveyCode = surveyCodeInput.value.trim();
 
     if (!cohortId) {
         alert('Please select a cohort');
         return;
     }
 
-    if (!surveyCode) {
-        alert('Please enter a survey code');
-        return;
-    }
-
     try {
         currentCohort = cohortId;
         
-        console.log(`Searching for results with cohort ID: ${cohortId} and survey code: ${surveyCode}`);
+        console.log(`Searching for results with cohort ID: ${cohortId}`);
         
-        // First check if the entered code is actually a cohort code
-        const { data: cohortCheck, error: cohortCheckError } = await supabaseClient
+        // Get the survey ID from the cohort
+        const { data: cohortData, error: cohortError } = await supabaseClient
             .from('cohorts')
             .select('id, code, survey_id')
-            .eq('code', surveyCode)
-            .maybeSingle();
+            .eq('id', cohortId)
+            .single();
             
-        if (!cohortCheckError && cohortCheck) {
-            console.log('Entered code matches a cohort code:', cohortCheck);
-            
-            // If the cohort code matches but the selected cohort ID is different, 
-            // warn the user but continue with their selected cohort
-            if (cohortCheck.id !== cohortId) {
-                console.warn('Cohort code found but doesn\'t match selected cohort');
-                console.warn('User selected cohort:', cohortId);
-                console.warn('Cohort from code lookup:', cohortCheck.id);
-            }
-            
-            // Try to get the survey using the cohort's survey_id
-            const { data: surveyFromCohort, error: surveyFromCohortError } = await supabaseClient
-                .from('surveys')
-                .select('id, json_config')
-                .eq('id', cohortCheck.survey_id)
-                .single();
-                
-            if (!surveyFromCohortError && surveyFromCohort) {
-                console.log('Found survey through cohort code:', surveyFromCohort);
-                currentSurvey = surveyFromCohort;
-            } else {
-                console.warn('Failed to find survey using cohort\'s survey_id:', surveyFromCohortError);
-                currentSurvey = await getSurveyByCode(surveyCode);
-            }
-        } else {
-            // Not a cohort code or error looking up cohort, try as a survey code
-            currentSurvey = await getSurveyByCode(surveyCode);
-        }
-        
-        if (!currentSurvey) {
-            console.warn('No survey found with code:', surveyCode);
-            alert(`No survey found with code: ${surveyCode}`);
+        if (cohortError || !cohortData) {
+            console.error('Error fetching cohort data:', cohortError);
+            alert('Error: Could not fetch cohort data');
             return;
         }
         
-        // At this point we have both the cohort ID and survey ID, so we can proceed
+        if (!cohortData.survey_id) {
+            console.warn('No survey associated with this cohort');
+            alert('This cohort does not have an associated survey');
+            return;
+        }
+        
+        // Get the survey using the cohort's survey_id
+        const { data: surveyData, error: surveyError } = await supabaseClient
+            .from('surveys')
+            .select('id, json_config')
+            .eq('id', cohortData.survey_id)
+            .single();
+            
+        if (surveyError || !surveyData) {
+            console.error('Error fetching survey data:', surveyError);
+            alert('Error: Could not fetch survey data');
+            return;
+        }
+        
+        // Store the current survey
+        currentSurvey = surveyData;
+        
         console.log('Using cohort ID:', currentCohort, 'and survey ID:', currentSurvey.id);
         
         try {
