@@ -12,6 +12,7 @@
             <div id="resultsContainer" class="results-container">
                 <div class="loading">Loading your results...</div>
             </div>
+            <div id="errorMessage" class="error-message" style="display: none; color: red; margin: 20px 0; padding: 10px; background-color: #ffeeee; border: 1px solid red;"></div>
         </main>
         
         <footer>
@@ -31,13 +32,26 @@
             auth.initSessionTimeout();
         }
         
+        // Helper function to show error
+        function showError(message) {
+            const errorDiv = document.getElementById('errorMessage');
+            if (errorDiv) {
+                errorDiv.textContent = message;
+                errorDiv.style.display = 'block';
+            }
+            console.error('Results page error:', message);
+        }
+        
         // Verify user is authenticated
         async function checkAuth() {
             try {
                 const { data: { session }, error } = await supabase.auth.getSession();
                 if (error || !session) {
                     console.error('No active session, redirecting to login');
-                    window.location.href = '/';
+                    showError('No active session detected. Redirecting to login page...');
+                    setTimeout(() => {
+                        window.location.href = '/';
+                    }, 2000);
                     return;
                 }
                 
@@ -45,12 +59,61 @@
                 const participantId = localStorage.getItem('futurelens_participant_id');
                 if (!participantId) {
                     console.error('No participant ID found, redirecting to survey code page');
-                    window.location.href = '/survey-code.html';
+                    showError('No participant ID found. Redirecting to survey code page...');
+                    setTimeout(() => {
+                        window.location.href = '/survey-code.html';
+                    }, 2000);
+                    return;
+                }
+                
+                // Verify this participant ID exists and has responses
+                try {
+                    const { data: participant, error: participantError } = await supabase
+                        .from('participants')
+                        .select('id, user_id, survey_id')
+                        .eq('id', participantId)
+                        .single();
+                        
+                    if (participantError || !participant) {
+                        console.error('Invalid participant record, redirecting to survey code page');
+                        showError('Invalid participant record. Redirecting to survey code page...');
+                        localStorage.removeItem('futurelens_participant_id');
+                        setTimeout(() => {
+                            window.location.href = '/survey-code.html';
+                        }, 2000);
+                        return;
+                    }
+                    
+                    // Check for responses
+                    const { data: responses, error: responseError } = await supabase
+                        .from('responses')
+                        .select('id')
+                        .eq('participant_id', participantId)
+                        .limit(1);
+                        
+                    if (responseError || !responses || responses.length === 0) {
+                        console.error('No responses found for this participant');
+                        showError('No survey responses found. Redirecting to survey code page...');
+                        localStorage.removeItem('futurelens_participant_id');
+                        setTimeout(() => {
+                            window.location.href = '/survey-code.html';
+                        }, 2000);
+                        return;
+                    }
+                } catch (err) {
+                    console.error('Error verifying participant data:', err);
+                    showError('Error verifying data. Redirecting to survey code page...');
+                    setTimeout(() => {
+                        window.location.href = '/survey-code.html';
+                    }, 2000);
                     return;
                 }
             } catch (error) {
                 console.error('Auth check error:', error);
-                window.location.href = '/';
+                showError('Authentication check failed. Redirecting to login page...');
+                setTimeout(() => {
+                    window.location.href = '/';
+                }, 2000);
             }
         }
         

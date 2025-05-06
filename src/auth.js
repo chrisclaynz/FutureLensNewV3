@@ -117,9 +117,11 @@ export const auth = {
             const userId = localStorage.getItem('participant_id');
             if (!userId) {
                 console.error('No user ID found');
-                window.location.href = '/';
+                this.showError('User ID not found. Please log in again.');
                 return;
             }
+
+            console.log('Checking survey code:', code, 'for user ID:', userId);
 
             // Query the cohorts table to find the cohort with this code
             const { data, error } = await supabase
@@ -128,7 +130,7 @@ export const auth = {
                 .eq('code', code);
                 
             if (error) {
-                console.error('Error finding cohort:', error.message);
+                console.error('Error finding cohort:', error.message, error);
                 this.showError('Error validating survey code. Please try again.');
                 return;
             }
@@ -141,52 +143,94 @@ export const auth = {
             
             // Use the first matching cohort
             const cohort = data[0];
+            console.log('Found cohort:', cohort);
             
             // Check if the user has already completed this survey
-            const { data: existingParticipant, error: participantError } = await supabase
+            // Use a two-step approach to avoid RLS issues:
+            // 1. First get all participant records for this user
+            const { data: userParticipants, error: participantError } = await supabase
                 .from('participants')
                 .select('id, survey_id')
-                .eq('user_id', userId)
-                .eq('survey_id', cohort.survey_id)
-                .single();
+                .eq('user_id', userId);
+            
+            console.log('User participants query result:', { 
+                count: userParticipants ? userParticipants.length : 0, 
+                error: participantError 
+            });
                 
+            // 2. Then find the one matching the cohort's survey_id
+            let existingParticipant = null;
+            if (!participantError && userParticipants && userParticipants.length > 0) {
+                // Find the participant record for this survey
+                existingParticipant = userParticipants.find(p => p.survey_id === cohort.survey_id);
+                console.log('Found matching participant for survey?', existingParticipant ? 'Yes' : 'No');
+            }
+            
             if (participantError && participantError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
-                console.error('Error checking existing participant:', participantError.message);
+                console.error('Error checking existing participant:', participantError.message, participantError);
+                this.showError(`Error checking participant record: ${participantError.message}`);
                 // Continue with the normal flow, don't block the user due to this error
             }
             
-            if (existingParticipant) {
-                // Check if there are responses for this participant
-                const { data: responses, error: responsesError } = await supabase
-                    .from('responses')
-                    .select('id')
-                    .eq('participant_id', existingParticipant.id);
+            // Try to find responses for this user in the responses table directly
+            let foundResponses = false;
+            
+            try {
+                // First, try to find responses for any participant records from this user for this survey
+                if (existingParticipant) {
+                    console.log('Found existing participant:', existingParticipant);
                     
-                if (responsesError) {
-                    console.error('Error checking responses:', responsesError.message);
-                    // Continue with normal flow
+                    // Find all participant IDs for this user and survey
+                    const relevantParticipantIds = userParticipants
+                        .filter(p => p.survey_id === cohort.survey_id)
+                        .map(p => p.id);
+                        
+                    console.log('Checking responses for these participant IDs:', relevantParticipantIds);
+                    
+                    // Check all participant IDs
+                    for (const pid of relevantParticipantIds) {
+                        const { data: responses, error: responseError } = await supabase
+                            .from('responses')
+                            .select('id')
+                            .eq('participant_id', pid)
+                            .limit(1);
+                            
+                        console.log(`Response check for participant ${pid}:`, {
+                            found: responses && responses.length > 0,
+                            error: responseError
+                        });
+                        
+                        if (responses && responses.length > 0) {
+                            foundResponses = true;
+                            localStorage.setItem('futurelens_participant_id', pid);
+                            console.log(`Found responses for participant ${pid}`);
+                            break;
+                        }
+                    }
                 }
                 
-                if (responses && responses.length > 0) {
-                    console.log('User has already completed this survey, redirecting to results');
-                    // Store the participant ID and redirect to results
-                    localStorage.setItem('futurelens_participant_id', existingParticipant.id);
+                console.log('Found responses for this user and survey?', foundResponses);
+                
+                if (foundResponses) {
+                    console.log('User has completed this survey. Redirecting to results...');
                     window.location.href = '/results.html';
                     return;
                 }
+            } catch (responseCheckError) {
+                console.error('Error checking responses:', responseCheckError);
             }
             
-            // If we get here, either the user hasn't completed the survey yet,
-            // or we couldn't determine if they have, so proceed normally
+            // If we didn't find any completed responses, continue with the survey
+            console.log('No completed responses found. Continuing to survey...');
             
             // Store the cohort ID and survey ID in localStorage
             localStorage.setItem('cohort_id', cohort.id);
             localStorage.setItem('survey_id', cohort.survey_id);
             
-            // Redirect to the welcome page instead of the survey page
+            console.log('Stored cohort_id and survey_id in localStorage, redirecting to welcome page');
             window.location.href = '/survey-welcome.html';
         } catch (error) {
-            console.error('Survey code error:', error.message);
+            console.error('Survey code error:', error.message, error);
             this.showError('Error validating survey code. Please try again.');
         }
     },

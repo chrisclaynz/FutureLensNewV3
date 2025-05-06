@@ -569,6 +569,7 @@ export function createSurvey(dependencies = {}) {
             }
             
             const answers = JSON.parse(savedAnswers);
+            console.log('Answers to submit:', answers.length);
             
             // Get user ID from storage
             const userId = storage.getItem('participant_id');
@@ -617,50 +618,29 @@ export function createSurvey(dependencies = {}) {
                 console.error('No cohort ID found, proceeding without it');
             }
             
-            // Refresh the auth session to ensure the token is valid
             try {
-                const { data: sessionData, error: sessionError } = await supabaseClient.auth.getSession();
-                if (sessionError) {
-                    console.error('Error refreshing session:', sessionError);
+                const { data: { session }, error: authError } = await supabaseClient.auth.getSession();
+                
+                if (authError) {
+                    console.error('Error refreshing session:', authError);
                     win.alert('Your session has expired. Please log in again.');
                     win.location.href = '/';
                     return;
                 }
                 
-                if (!sessionData.session) {
+                if (!session) {
+                    console.error('No active session');
                     win.alert('Your session has expired. Please log in again.');
                     win.location.href = '/';
                     return;
                 }
-            } catch (sessionError) {
-                console.error('Error refreshing auth session:', sessionError);
-            }
-            
-            // Also look up the cohort record to verify it exists and get its info
-            if (cohortId) {
-                try {
-                    const { data: cohortData, error: cohortError } = await supabaseClient
-                        .from('cohorts')
-                        .select('id, code, label, survey_id')
-                        .eq('id', cohortId)
-                        .single();
-                        
-                    if (cohortError) {
-                        console.error('Error verifying cohort:', cohortError);
-                    } else {
-                        console.log('Verified cohort data:', cohortData);
-                        // If cohort's survey_id is different from our current surveyId, log this discrepancy
-                        if (cohortData.survey_id && cohortData.survey_id !== surveyId) {
-                            console.warn('NOTE: Cohort has survey_id', cohortData.survey_id, 'but we are using', surveyId);
-                        }
-                    }
-                } catch (cohortError) {
-                    console.error('Error checking cohort data:', cohortError);
-                }
+            } catch (authError) {
+                console.error('Error refreshing auth session:', authError);
             }
             
             // Check if participant record exists, create if it doesn't
             let participantId = storage.getItem('futurelens_participant_id');
+            console.log('Existing participant ID from localStorage:', participantId);
             
             if (!participantId) {
                 // Create a new participant record
@@ -705,48 +685,85 @@ export function createSurvey(dependencies = {}) {
                         completePayload: insertPayload
                     });
                     
-                    // Use more explicit error handling for the insert operation
-                    let response;
-                    try {
-                        response = await supabaseClient
-                            .from('participants')
-                            .insert(insertPayload)
-                            .select('id')
-                            .single();
-                    } catch (insertError) {
-                        console.error('Exception during insert operation:', insertError);
-                        win.alert('Database error: ' + (insertError.message || 'Unknown error'));
-                        return;
-                    }
-                    
-                    // Check for errors in the response
-                    if (response.error) {
-                        console.error('Error response from Supabase:', response.error);
+                    // Check if a participant record already exists
+                    const { data: existingRecord, error: checkError } = await supabaseClient
+                        .from('participants')
+                        .select('id')
+                        .eq('user_id', userId)
+                        .eq('survey_id', finalSurveyId)
+                        .maybeSingle();
                         
-                        // Check for RLS policy violations
-                        if (response.error.code === '42501') {
-                            console.error('RLS policy violation - insufficient privileges');
-                            win.alert('Permission denied: You do not have permission to create a participant record. This might be due to Row Level Security policies.');
-                        } else if (response.error.code === '23505') {
-                            console.error('Unique constraint violation - duplicate key');
-                            win.alert('A record already exists for this user and survey. Please try again with a different user or survey.');
-                        } else {
-                            win.alert('Error creating participant record: ' + response.error.message);
+                    console.log('Existing participant check:', { existingRecord, checkError });
+                    
+                    if (existingRecord && existingRecord.id) {
+                        console.log('Found existing participant record, using ID:', existingRecord.id);
+                        participantId = existingRecord.id;
+                        storage.setItem('futurelens_participant_id', participantId);
+                    } else {
+                        // Use more explicit error handling for the insert operation
+                        let response;
+                        try {
+                            response = await supabaseClient
+                                .from('participants')
+                                .insert(insertPayload)
+                                .select('id')
+                                .single();
+                                
+                            console.log('Participant insert response:', response);
+                        } catch (insertError) {
+                            console.error('Exception during insert operation:', insertError);
+                            win.alert('Database error: ' + (insertError.message || 'Unknown error'));
+                            return;
                         }
-                        return;
+                        
+                        if (response.error) {
+                            const error = response.error;
+                            console.error('Error creating participant record:', error);
+                            
+                            // Check if it might be a duplicate (someone submitted twice quickly)
+                            if (error.code === '23505' || error.message.includes('duplicate')) {
+                                console.log('Duplicate participant record detected, retrying fetch');
+                                
+                                // Try to fetch the existing record instead
+                                const { data: existingRecord, error: fetchError } = await supabaseClient
+                                    .from('participants')
+                                    .select('id')
+                                    .eq('user_id', userId)
+                                    .eq('survey_id', finalSurveyId)
+                                    .maybeSingle();
+                                    
+                                if (fetchError || !existingRecord) {
+                                    console.error('Failed to fetch existing participant after duplicate error:', fetchError);
+                                    win.alert('Error creating participant record: ' + (error.message || 'Unknown error'));
+                                    return;
+                                }
+                                
+                                participantId = existingRecord.id;
+                                console.log('Found existing participant ID after duplicate error:', participantId);
+                            } else {
+                                // Not a duplicate error, show the error
+                                win.alert('Error creating participant record: ' + (error.message || 'Unknown error'));
+                                return;
+                            }
+                        } else if (response.data) {
+                            participantId = response.data.id;
+                            console.log('Created new participant ID:', participantId);
+                        } else {
+                            console.error('No error but also no data in response:', response);
+                            win.alert('Error creating participant record: Unknown error');
+                            return;
+                        }
+                        
+                        // Store the participant ID for future use
+                        if (participantId) {
+                            storage.setItem('futurelens_participant_id', participantId);
+                            console.log('Stored participant ID in localStorage:', participantId);
+                        } else {
+                            console.error('No participant ID obtained from insert or lookup');
+                            win.alert('Error creating participant record: Could not obtain participant ID');
+                            return;
+                        }
                     }
-                    
-                    // Success case
-                    if (!response.data || !response.data.id) {
-                        console.error('No data returned from successful insert');
-                        win.alert('Unexpected response from database. Please try again.');
-                        return;
-                    }
-                    
-                    console.log('Successfully created participant record:', response.data);
-                    
-                    participantId = response.data.id;
-                    storage.setItem('futurelens_participant_id', participantId);
                 } catch (participantError) {
                     console.error('Exception creating participant record:', participantError);
                     win.alert('Error creating participant record: ' + (participantError.message || 'Unknown error'));
@@ -779,7 +796,28 @@ export function createSurvey(dependencies = {}) {
                 }
             }
             
+            // Check if responses already exist for this participant
+            try {
+                const { data: existingResponses, error: checkError } = await supabaseClient
+                    .from('responses')
+                    .select('id')
+                    .eq('participant_id', participantId);
+                    
+                console.log('Existing responses check:', { 
+                    count: existingResponses ? existingResponses.length : 0, 
+                    error: checkError 
+                });
+                
+                if (existingResponses && existingResponses.length > 0) {
+                    console.warn(`${existingResponses.length} responses already exist for this participant`);
+                }
+            } catch (checkError) {
+                console.error('Error checking existing responses:', checkError);
+            }
+            
             // Submit all answers to Supabase in one batch operation
+            console.log(`Submitting ${answers.length} responses for participant ID: ${participantId}`);
+            
             const promises = answers.map(answer => {
                 return supabaseClient
                     .from('responses')
@@ -800,6 +838,8 @@ export function createSurvey(dependencies = {}) {
                 win.alert(`Some responses failed to submit (${errors.length}/${results.length}). Please try again.`);
                 return;
             }
+            
+            console.log(`Successfully submitted ${results.length} responses`);
             
             // Clear local storage of survey data
             storage.removeItem('surveyAnswers');
