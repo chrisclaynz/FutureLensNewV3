@@ -809,7 +809,7 @@ async function loadCohortResults() {
         const stats = calculateStats(responses);
         
         // Display results
-        displayCohortAverages(stats);
+        displayCohortAverages(stats, 'Cohort Overview', responses);
         
         // Check for incomplete surveys
         try {
@@ -871,7 +871,17 @@ async function loadCohortResults() {
 function calculateStats(responses) {
     const stats = {};
     
+    // First, group responses by question key and participant to avoid counting duplicates
+    const uniqueResponses = {};
+    
     responses.forEach(response => {
+        const key = `${response.participant_id}_${response.question_key}`;
+        // Keep only the last response in case of duplicates
+        uniqueResponses[key] = response;
+    });
+    
+    // Process the unique responses
+    Object.values(uniqueResponses).forEach(response => {
         const questionKey = response.question_key;
         
         if (!stats[questionKey]) {
@@ -879,9 +889,13 @@ function calculateStats(responses) {
                 sum: 0,
                 count: 0,
                 dontUnderstand: 0,
+                totalParticipants: 0,
                 values: [] // Store all values for standard deviation calculation
             };
         }
+        
+        // Count this as a response for this question
+        stats[questionKey].totalParticipants++;
         
         if (response.dont_understand) {
             stats[questionKey].dontUnderstand++;
@@ -910,19 +924,20 @@ function calculateStats(responses) {
             stdDev = Math.sqrt(variance);
         }
         
-        // Calculate don't understand percentage
-        const dontUnderstandPercentage = (data.dontUnderstand / (data.count + data.dontUnderstand)) * 100 || 0;
+        // Calculate don't understand percentage using totalParticipants as the denominator
+        const dontUnderstandPercentage = (data.dontUnderstand / data.totalParticipants) * 100 || 0;
         
         return {
             question_key: key,
             average,
             stdDev,
-            dontUnderstandPercentage
+            dontUnderstandPercentage,
+            totalParticipants: data.totalParticipants
         };
     });
 }
 
-function displayCohortAverages(stats, title = 'Cohort Overview') {
+function displayCohortAverages(stats, title = 'Cohort Overview', allResponses = []) {
     // Update the header if a custom title is provided
     const cohortResultsHeader = document.querySelector('.cohort-results h3');
     if (cohortResultsHeader) {
@@ -1097,6 +1112,50 @@ function displayCohortAverages(stats, title = 'Cohort Overview') {
         
         // Add the container to the cohort averages section
         cohortAverages.appendChild(continuaContainer);
+        
+        // Create action buttons container
+        const actionButtonsContainer = document.createElement('div');
+        actionButtonsContainer.className = 'cohort-action-buttons';
+        actionButtonsContainer.id = 'cohort-action-buttons';
+        
+        // Create the three buttons
+        const dontUnderstandBtn = document.createElement('button');
+        dontUnderstandBtn.className = 'btn primary action-btn';
+        dontUnderstandBtn.id = 'dont-understand-btn';
+        dontUnderstandBtn.textContent = "Don't understand";
+        dontUnderstandBtn.addEventListener('click', function() {
+            console.log("Don't understand button clicked");
+            showDontUnderstandTable(stats, allResponses);
+        });
+        
+        const agreementBtn = document.createElement('button');
+        agreementBtn.className = 'btn primary action-btn';
+        agreementBtn.id = 'agreement-btn';
+        agreementBtn.textContent = "Agreement";
+        agreementBtn.addEventListener('click', function() {
+            console.log("Agreement button clicked");
+            showStandardDeviationTable(stats, 'ascending', allResponses);
+        });
+        
+        const disagreementBtn = document.createElement('button');
+        disagreementBtn.className = 'btn primary action-btn';
+        disagreementBtn.id = 'disagreement-btn';
+        disagreementBtn.textContent = "Disagreement";
+        disagreementBtn.addEventListener('click', function() {
+            console.log("Disagreement button clicked");
+            showStandardDeviationTable(stats, 'descending', allResponses);
+        });
+        
+        // Append buttons to container
+        actionButtonsContainer.appendChild(dontUnderstandBtn);
+        actionButtonsContainer.appendChild(agreementBtn);
+        actionButtonsContainer.appendChild(disagreementBtn);
+        
+        // Add the buttons container after the continuum grid
+        cohortAverages.appendChild(actionButtonsContainer);
+        
+        // Log the setup is complete
+        console.log('Button setup complete with direct event listeners');
         
         // Add detailed stats after the visualizations
         const detailedStatsContainer = document.createElement('div');
@@ -1622,8 +1681,14 @@ function showContinuumDetails(questionKey) {
 
 // Helper function to hide details view
 function hideDetails() {
+    console.log('hideDetails called');
+    
+    // Ensure we get the latest DOM reference
+    const continuumDetails = document.querySelector('.continuum-details');
+    
     if (continuumDetails) {
-        continuumDetails.style.display = 'none';
+        console.log('Found continuumDetails element, hiding it');
+        continuumDetails.style.cssText = 'display: none !important;';
         continuumDetails.classList.add('hidden');
     } else {
         console.error('continuumDetails element not found in hideDetails function');
@@ -1808,4 +1873,489 @@ function getStdDevInterpretation(stdDev) {
     } else {
         return "Strong disagreement among respondents";
     }
+}
+
+// Helper function to get perspective text based on score
+function getPerspectiveDescription(score, continuum, alignment, continua) {
+    // Check if valid continuum info is available
+    if (!continuum || !continua[continuum]) {
+        return 'Unknown perspective';
+    }
+    
+    // Get the labels from the continuum
+    const labels = continua[continuum].labels || { left: 'Left', right: 'Right' };
+    const leftLabel = labels.left;
+    const rightLabel = labels.right;
+    
+    // Adjust score based on alignment if needed
+    let adjustedScore = score;
+    if (alignment === 'right') {
+        adjustedScore = -adjustedScore; // Invert for right-aligned questions
+    }
+    
+    // Return the appropriate perspective text
+    if (adjustedScore <= -1.5) {
+        return `Strongly ${leftLabel}`;
+    } else if (adjustedScore <= -0.75) {
+        return `Moderately ${leftLabel}`;
+    } else if (adjustedScore < 0) {
+        return `Slightly ${leftLabel}`;
+    } else if (adjustedScore === 0) {
+        return `Balanced between ${leftLabel} and ${rightLabel}`;
+    } else if (adjustedScore <= 0.75) {
+        return `Slightly ${rightLabel}`;
+    } else if (adjustedScore <= 1.5) {
+        return `Moderately ${rightLabel}`;
+    } else {
+        return `Strongly ${rightLabel}`;
+    }
+}
+
+// Function to show a table of questions sorted by don't understand percentage
+function showDontUnderstandTable(stats, allResponses) {
+    console.log("showDontUnderstandTable called with stats:", stats.length);
+    
+    // Hide any existing details view
+    hideDetails();
+    
+    // Ensure the continuumDetails element is properly selected
+    const continuumDetails = document.querySelector('.continuum-details');
+    const continuumStats = document.getElementById('continuum-stats');
+    
+    // Create details container if it doesn't exist
+    if (!continuumDetails) {
+        console.error('continuumDetails element not found');
+        return;
+    }
+    
+    if (!continuumStats) {
+        console.error('continuumStats element not found');
+        return;
+    }
+    
+    console.log('Found continuumDetails and continuumStats elements');
+    
+    // Make sure the element is shown - with !important flags to override any other styles
+    continuumDetails.classList.remove('hidden');
+    continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important;';
+    
+    // Clear existing content
+    continuumStats.innerHTML = '';
+    
+    // Create header with back button
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'table-header-container';
+    
+    const backButtonTop = document.createElement('button');
+    backButtonTop.className = 'btn secondary back-button-top';
+    backButtonTop.textContent = '← Back';
+    backButtonTop.onclick = function() {
+        console.log('Back button clicked');
+        hideDetails();
+    };
+    headerContainer.appendChild(backButtonTop);
+    
+    const header = document.createElement('h2');
+    header.textContent = "Questions by 'Don't Understand' Percentage";
+    headerContainer.appendChild(header);
+    
+    continuumStats.appendChild(headerContainer);
+    
+    // Sort stats by don't understand percentage (highest to lowest)
+    const sortedStats = [...stats].sort((a, b) => b.dontUnderstandPercentage - a.dontUnderstandPercentage);
+    
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'stats-table';
+    table.setAttribute('aria-label', "Questions sorted by 'Don't Understand' percentage");
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const questionHeader = document.createElement('th');
+    questionHeader.textContent = 'Question Statement';
+    questionHeader.setAttribute('scope', 'col');
+    
+    const percentageHeader = document.createElement('th');
+    percentageHeader.textContent = "Don't Understand %";
+    percentageHeader.setAttribute('scope', 'col');
+    
+    const meanHeader = document.createElement('th');
+    meanHeader.textContent = "Mean";
+    meanHeader.setAttribute('scope', 'col');
+    
+    const stdDevHeader = document.createElement('th');
+    stdDevHeader.textContent = "Standard Deviation";
+    stdDevHeader.setAttribute('scope', 'col');
+    
+    const rangeHeader = document.createElement('th');
+    rangeHeader.textContent = "Range";
+    rangeHeader.setAttribute('scope', 'col');
+    
+    const modeHeader = document.createElement('th');
+    modeHeader.textContent = "Mode Perspective";
+    modeHeader.setAttribute('scope', 'col');
+    
+    headerRow.appendChild(questionHeader);
+    headerRow.appendChild(percentageHeader);
+    headerRow.appendChild(meanHeader);
+    headerRow.appendChild(stdDevHeader);
+    headerRow.appendChild(rangeHeader);
+    headerRow.appendChild(modeHeader);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    // Get the survey configuration for question texts
+    const surveyData = currentSurveys[selectedCohorts[0]];
+    const surveyConfig = surveyData?.json_config || {};
+    const questions = surveyConfig.questions || [];
+    const statements = surveyConfig.statements || [];
+    const continua = surveyConfig.continua || {};
+    
+    // Map to hold question keys to their text - check both questions and statements
+    const questionTextMap = {};
+    const questionContinuumMap = {};
+    
+    // First try to get from questions array
+    questions.forEach(q => {
+        if (q.id && q.text) {
+            questionTextMap[q.id] = q.text;
+        }
+    });
+    
+    // Also check statements array and build continuum mapping
+    statements.forEach(s => {
+        if (s.id && s.text) {
+            questionTextMap[s.id] = s.text;
+            if (s.continuum) {
+                questionContinuumMap[s.id] = {
+                    continuum: s.continuum,
+                    alignment: s.alignment || 'left'
+                };
+            }
+        }
+    });
+    
+    // Add rows for each stat
+    sortedStats.forEach(stat => {
+        const row = document.createElement('tr');
+        
+        // Question text cell
+        const questionCell = document.createElement('td');
+        // Use the question text if available, otherwise use the key
+        questionCell.textContent = questionTextMap[stat.question_key] || stat.question_key;
+        row.appendChild(questionCell);
+        
+        // Don't understand percentage cell
+        const percentageCell = document.createElement('td');
+        // Show both count and percentage
+        percentageCell.textContent = `${stat.dontUnderstandPercentage.toFixed(1)}% (${Math.round(stat.dontUnderstandPercentage * stat.totalParticipants / 100)} of ${stat.totalParticipants})`;
+        row.appendChild(percentageCell);
+        
+        // Mean cell
+        const meanCell = document.createElement('td');
+        meanCell.textContent = stat.average.toFixed(2);
+        row.appendChild(meanCell);
+        
+        // Standard deviation cell
+        const stdDevCell = document.createElement('td');
+        const interpretation = getStdDevInterpretation(stat.stdDev);
+        stdDevCell.textContent = `${stat.stdDev.toFixed(2)} (${interpretation})`;
+        row.appendChild(stdDevCell);
+        
+        // Calculate range from responses
+        const rangeCell = document.createElement('td');
+        // Find all responses for this question
+        const questionResponses = allResponses.filter(r => r.question_key === stat.question_key);
+        let minVal = Infinity;
+        let maxVal = -Infinity;
+        questionResponses.forEach(r => {
+            if (r.likert_value !== null) {
+                minVal = Math.min(minVal, r.likert_value);
+                maxVal = Math.max(maxVal, r.likert_value);
+            }
+        });
+        const range = minVal !== Infinity ? `${minVal} to ${maxVal}` : 'N/A';
+        rangeCell.textContent = range;
+        row.appendChild(rangeCell);
+        
+        // Mode perspective cell
+        const modeCell = document.createElement('td');
+        // Get the continuum info for this question
+        const continuumInfo = questionContinuumMap[stat.question_key];
+        if (continuumInfo) {
+            const perspective = getPerspectiveDescription(
+                stat.average, 
+                continuumInfo.continuum,
+                continuumInfo.alignment,
+                continua
+            );
+            modeCell.textContent = perspective;
+        } else {
+            modeCell.textContent = 'N/A';
+        }
+        row.appendChild(modeCell);
+        
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    
+    // Create table container for scrollability
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'table-container';
+    tableContainer.appendChild(table);
+    
+    continuumStats.appendChild(tableContainer);
+    
+    // Add count and info
+    const countInfo = document.createElement('p');
+    countInfo.className = 'table-count-info';
+    countInfo.textContent = `Showing ${sortedStats.length} questions sorted by highest "Don't Understand" percentage.`;
+    continuumStats.appendChild(countInfo);
+    
+    // Add back button at the bottom
+    const backButton = document.createElement('button');
+    backButton.className = 'btn secondary';
+    backButton.textContent = 'Back to Overview';
+    backButton.onclick = function() {
+        console.log('Back button clicked');
+        hideDetails();
+    };
+    
+    continuumStats.appendChild(backButton);
+    
+    // Make sure the element is shown one more time and scroll to it
+    setTimeout(() => {
+        continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important;';
+        continuumDetails.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        console.log('Scrolled to continuumDetails');
+    }, 100);
+}
+
+// Function to show a table of questions sorted by standard deviation
+function showStandardDeviationTable(stats, order, allResponses) {
+    console.log("showStandardDeviationTable called with stats:", stats.length, "order:", order);
+    
+    // Hide any existing details view
+    hideDetails();
+    
+    // Ensure the continuumDetails element is properly selected
+    const continuumDetails = document.querySelector('.continuum-details');
+    const continuumStats = document.getElementById('continuum-stats');
+    
+    // Create details container if it doesn't exist
+    if (!continuumDetails) {
+        console.error('continuumDetails element not found');
+        return;
+    }
+    
+    if (!continuumStats) {
+        console.error('continuumStats element not found');
+        return;
+    }
+    
+    console.log('Found continuumDetails and continuumStats elements');
+    
+    // Make sure the element is shown - with !important flags to override any other styles
+    continuumDetails.classList.remove('hidden');
+    continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important;';
+    
+    // Clear existing content
+    continuumStats.innerHTML = '';
+    
+    // Create header with back button
+    const headerContainer = document.createElement('div');
+    headerContainer.className = 'table-header-container';
+    
+    const backButtonTop = document.createElement('button');
+    backButtonTop.className = 'btn secondary back-button-top';
+    backButtonTop.textContent = '← Back';
+    backButtonTop.onclick = function() {
+        console.log('Back button clicked');
+        hideDetails();
+    };
+    headerContainer.appendChild(backButtonTop);
+    
+    const header = document.createElement('h2');
+    header.textContent = order === 'ascending' ? 
+        "Questions by Agreement (Low to High Standard Deviation)" : 
+        "Questions by Disagreement (High to Low Standard Deviation)";
+    headerContainer.appendChild(header);
+    
+    continuumStats.appendChild(headerContainer);
+    
+    // Sort stats by standard deviation
+    const sortedStats = [...stats].sort((a, b) => {
+        return order === 'ascending' ? 
+            a.stdDev - b.stdDev : 
+            b.stdDev - a.stdDev;
+    });
+    
+    // Create table
+    const table = document.createElement('table');
+    table.className = 'stats-table';
+    table.setAttribute('aria-label', order === 'ascending' ? 
+        "Questions sorted by lowest to highest standard deviation" : 
+        "Questions sorted by highest to lowest standard deviation");
+    
+    // Create table header
+    const thead = document.createElement('thead');
+    const headerRow = document.createElement('tr');
+    const questionHeader = document.createElement('th');
+    questionHeader.textContent = 'Question Statement';
+    questionHeader.setAttribute('scope', 'col');
+    
+    const stdDevHeader = document.createElement('th');
+    stdDevHeader.textContent = "Standard Deviation";
+    stdDevHeader.setAttribute('scope', 'col');
+    
+    const meanHeader = document.createElement('th');
+    meanHeader.textContent = "Mean";
+    meanHeader.setAttribute('scope', 'col');
+    
+    const rangeHeader = document.createElement('th');
+    rangeHeader.textContent = "Range";
+    rangeHeader.setAttribute('scope', 'col');
+    
+    const modeHeader = document.createElement('th');
+    modeHeader.textContent = "Mode Perspective";
+    modeHeader.setAttribute('scope', 'col');
+    
+    headerRow.appendChild(questionHeader);
+    headerRow.appendChild(stdDevHeader);
+    headerRow.appendChild(meanHeader);
+    headerRow.appendChild(rangeHeader);
+    headerRow.appendChild(modeHeader);
+    thead.appendChild(headerRow);
+    table.appendChild(thead);
+    
+    // Create table body
+    const tbody = document.createElement('tbody');
+    
+    // Get the survey configuration for question texts and continuum mapping
+    const surveyData = currentSurveys[selectedCohorts[0]];
+    const surveyConfig = surveyData?.json_config || {};
+    const questions = surveyConfig.questions || [];
+    const statements = surveyConfig.statements || [];
+    const continua = surveyConfig.continua || {};
+    
+    // Map to hold question keys to their text - check both questions and statements
+    const questionTextMap = {};
+    const questionContinuumMap = {};
+    
+    // First try to get from questions array
+    questions.forEach(q => {
+        if (q.id && q.text) {
+            questionTextMap[q.id] = q.text;
+        }
+    });
+    
+    // Also check statements array and build continuum mapping
+    statements.forEach(s => {
+        if (s.id && s.text) {
+            questionTextMap[s.id] = s.text;
+            if (s.continuum) {
+                questionContinuumMap[s.id] = {
+                    continuum: s.continuum,
+                    alignment: s.alignment || 'left'
+                };
+            }
+        }
+    });
+    
+    // Add rows for each stat
+    sortedStats.forEach(stat => {
+        const row = document.createElement('tr');
+        
+        // Question text cell
+        const questionCell = document.createElement('td');
+        // Use the question text if available, otherwise use the key
+        questionCell.textContent = questionTextMap[stat.question_key] || stat.question_key;
+        row.appendChild(questionCell);
+        
+        // Standard deviation cell
+        const stdDevCell = document.createElement('td');
+        const interpretation = getStdDevInterpretation(stat.stdDev);
+        stdDevCell.textContent = `${stat.stdDev.toFixed(2)} (${interpretation})`;
+        row.appendChild(stdDevCell);
+        
+        // Mean cell
+        const meanCell = document.createElement('td');
+        meanCell.textContent = stat.average.toFixed(2);
+        row.appendChild(meanCell);
+        
+        // Calculate range from responses
+        const rangeCell = document.createElement('td');
+        // Find all responses for this question
+        const questionResponses = allResponses.filter(r => r.question_key === stat.question_key);
+        let minVal = Infinity;
+        let maxVal = -Infinity;
+        questionResponses.forEach(r => {
+            if (r.likert_value !== null) {
+                minVal = Math.min(minVal, r.likert_value);
+                maxVal = Math.max(maxVal, r.likert_value);
+            }
+        });
+        const range = minVal !== Infinity ? `${minVal} to ${maxVal}` : 'N/A';
+        rangeCell.textContent = range;
+        row.appendChild(rangeCell);
+        
+        // Mode perspective cell
+        const modeCell = document.createElement('td');
+        // Get the continuum info for this question
+        const continuumInfo = questionContinuumMap[stat.question_key];
+        if (continuumInfo) {
+            const perspective = getPerspectiveDescription(
+                stat.average, 
+                continuumInfo.continuum,
+                continuumInfo.alignment,
+                continua
+            );
+            modeCell.textContent = perspective;
+        } else {
+            modeCell.textContent = 'N/A';
+        }
+        row.appendChild(modeCell);
+        
+        tbody.appendChild(row);
+    });
+    
+    table.appendChild(tbody);
+    
+    // Create table container for scrollability
+    const tableContainer = document.createElement('div');
+    tableContainer.className = 'table-container';
+    tableContainer.appendChild(table);
+    
+    continuumStats.appendChild(tableContainer);
+    
+    // Add count and info
+    const countInfo = document.createElement('p');
+    countInfo.className = 'table-count-info';
+    countInfo.textContent = order === 'ascending' ?
+        `Showing ${sortedStats.length} questions sorted by lowest standard deviation (most agreement).` :
+        `Showing ${sortedStats.length} questions sorted by highest standard deviation (most disagreement).`;
+    continuumStats.appendChild(countInfo);
+    
+    // Add back button at the bottom
+    const backButton = document.createElement('button');
+    backButton.className = 'btn secondary';
+    backButton.textContent = 'Back to Overview';
+    backButton.onclick = function() {
+        console.log('Back button clicked');
+        hideDetails();
+    };
+    
+    continuumStats.appendChild(backButton);
+    
+    // Make sure the element is shown one more time and scroll to it
+    setTimeout(() => {
+        continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; height: auto !important; overflow: visible !important;';
+        continuumDetails.scrollIntoView({ behavior: 'smooth', block: 'start' });
+        console.log('Scrolled to continuumDetails');
+    }, 100);
 } 

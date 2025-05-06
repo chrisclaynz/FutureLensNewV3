@@ -2571,4 +2571,160 @@ button:disabled {
     color: #555;
     margin: 10px 0;
     font-weight: 500;
+}
+
+/* Cohort action buttons styling */
+.cohort-action-buttons {
+    display: flex;
+    justify-content: center;
+    gap: 15px;
+    margin: 25px 0;
+    padding: 15px;
+    border-top: 1px solid #eee;
+    border-bottom: 1px solid #eee;
+}
+
+.action-btn {
+    min-width: 150px;
+    padding: 10px 20px;
+    font-weight: 500;
+    text-align: center;
+    transition: all 0.3s ease;
+}
+
+@media (max-width: 768px) {
+    .cohort-action-buttons {
+        flex-direction: column;
+        align-items: center;
+    }
+    
+    .action-btn {
+        width: 100%;
+        margin-bottom: 10px;
+    }
+}
+
+/* Stats Table Styling */
+.stats-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 20px 0 30px 0;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+    border-radius: 4px;
+    overflow: hidden;
+    table-layout: fixed;
+}
+
+.stats-table thead {
+    background-color: var(--primary-color);
+    color: white;
+}
+
+.stats-table th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    word-wrap: break-word;
+    font-size: 14px;
+}
+
+.stats-table th:first-child {
+    width: 40%;
+}
+
+.stats-table th:not(:first-child) {
+    width: 15%;
+}
+
+.stats-table tbody tr {
+    border-bottom: 1px solid #dddddd;
+}
+
+.stats-table tbody tr:nth-of-type(even) {
+    background-color: #f5f5f5;
+}
+
+.stats-table tbody tr:last-of-type {
+    border-bottom: 2px solid var(--primary-color);
+}
+
+.stats-table td {
+    padding: 12px 15px;
+    vertical-align: top;
+    word-wrap: break-word;
+    font-size: 14px;
+}
+
+/* Table container for scrollability */
+.table-container {
+    max-height: 500px;
+    overflow-y: auto;
+    margin: 20px 0;
+    border: 1px solid #eee;
+    border-radius: 4px;
+    overflow-x: auto; /* Add horizontal scrolling for wide tables */
+}
+
+/* Table header container */
+.table-header-container {
+    position: relative;
+    margin-bottom: 20px;
+    padding-top: 40px;
+    text-align: center;
+}
+
+.back-button-top {
+    position: absolute;
+    top: 0;
+    left: 0;
+}
+
+/* Info text below table */
+.table-count-info {
+    color: #666;
+    font-style: italic;
+    text-align: center;
+    margin-bottom: 20px;
+}
+
+@media (max-width: 768px) {
+    .stats-table {
+        font-size: 13px;
+        table-layout: auto; /* Allow table to adjust on mobile */
+    }
+    
+    .stats-table th, 
+    .stats-table td {
+        padding: 8px 10px;
+        font-size: 13px;
+    }
+    
+    .stats-table th:first-child {
+        width: 30%;
+    }
+    
+    .table-container {
+        max-height: 350px;
+    }
+    
+    .table-header-container {
+        padding-top: 30px;
+    }
+    
+    .table-count-info {
+        font-size: 13px;
+    }
+}
+
+/* Fix specific display issues with continuum-details */
+.continuum-details.card {
+    display: block;
+    visibility: visible;
+    opacity: 1;
+}
+
+.continuum-details.card.hidden {
+    display: none;
+    visibility: hidden;
+    opacity: 0;
 } 
