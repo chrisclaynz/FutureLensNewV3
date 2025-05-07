@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "type": "module",
   "scripts": {
+    "prepare": "husky",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:rls": "jest test/rls-test.js",
@@ -35,6 +36,7 @@
     "babel-jest": "^29.7.0",
     "babel-plugin-transform-define": "^2.1.4",
     "dotenv": "^16.5.0",
+    "husky": "^9.1.7",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
