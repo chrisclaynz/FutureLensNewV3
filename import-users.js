@@ -1,5 +1,9 @@
 import { createClient } from '@supabase/supabase-js';
 import fs from 'fs';
+import dotenv from 'dotenv';
+
+// Load environment variables
+dotenv.config();
 
 // Supabase configuration
 const SUPABASE_URL = process.env.VITE_SUPABASE_URL || 'https://noxrttgtvhtoiejujoyd.supabase.co';

@@ -10,11 +10,11 @@ const resultsContainer = document.getElementById('results-container');
 const studentSearch = document.getElementById('student-search');
 const cohortAverages = document.getElementById('cohort-averages');
 const incompleteSurveys = document.getElementById('incomplete-surveys');
-const continuumDetails = document.querySelector('.continuum-details');
-const continuumStats = document.getElementById('continuum-stats');
 const toggleStudentIdsBtn = document.getElementById('toggle-student-ids');
 const tabButtons = document.querySelectorAll('.tab-btn');
 const tabContents = document.querySelectorAll('.tab-content');
+const continuumDetails = document.querySelector('.continuum-details');
+const continuumStats = document.getElementById('continuum-stats');
 
 // State
 let currentUser = null;
@@ -937,7 +937,18 @@ function calculateStats(responses) {
     });
 }
 
-function displayCohortAverages(stats, title = 'Cohort Overview', allResponses = []) {
+function displayCohortAverages(stats, title = 'Cohort Overview', responses = []) {
+    // Store responses globally for use in details view
+    allResponses = responses;
+    
+    // Initialize the continuum details elements if they don't exist
+    if (!continuumDetails) {
+        continuumDetails = document.querySelector('.continuum-details');
+    }
+    if (!continuumStats) {
+        continuumStats = document.getElementById('continuum-stats');
+    }
+    
     // Update the header if a custom title is provided
     const cohortResultsHeader = document.querySelector('.cohort-results h3');
     if (cohortResultsHeader) {
@@ -982,22 +993,20 @@ function displayCohortAverages(stats, title = 'Cohort Overview', allResponses = 
         // Group stats by continuum or infer grouping from question keys
         const continuaStats = {};
         
+        // Build mapping of question_key to continuum and alignment
+        const questionContinuumMap = {};
+        statements.forEach(statement => {
+            if (statement.id && statement.continuum) {
+                questionContinuumMap[statement.id] = {
+                    continuum: statement.continuum,
+                    alignment: statement.alignment || 'left'
+                };
+            }
+        });
+        
+        console.log('Question to continuum mapping:', questionContinuumMap);
+        
         if (hasContinuaData && statements.length > 0) {
-            // MATCHING APPROACH: Try to match each stat to its continuum using statements
-            
-            // First, build a mapping of question_key to continuum and alignment
-            const questionContinuumMap = {};
-            statements.forEach(statement => {
-                if (statement.id && statement.continuum) {
-                    questionContinuumMap[statement.id] = {
-                        continuum: statement.continuum,
-                        alignment: statement.alignment || 'left'
-                    };
-                }
-            });
-            
-            console.log('Question to continuum mapping:', questionContinuumMap);
-            
             // Initialize each continuum
             Object.keys(continua).forEach(continuumKey => {
                 continuaStats[continuumKey] = {
@@ -1154,53 +1163,62 @@ function displayCohortAverages(stats, title = 'Cohort Overview', allResponses = 
         // Add the buttons container after the continuum grid
         cohortAverages.appendChild(actionButtonsContainer);
         
-        // Log the setup is complete
-        console.log('Button setup complete with direct event listeners');
-        
-        // Add detailed stats after the visualizations
+        // Create detailed stats container but keep it hidden by default
         const detailedStatsContainer = document.createElement('div');
-        detailedStatsContainer.className = 'detailed-stats';
+        detailedStatsContainer.className = 'detailed-stats hidden';
+        detailedStatsContainer.id = 'detailed-stats';
         detailedStatsContainer.innerHTML = '<h4>Detailed Statistics</h4>';
         
-        // Create stat cards for each statistic (old view)
+        // Create stat cards container
         const statCardsContainer = document.createElement('div');
         statCardsContainer.className = 'stat-cards-container';
         
+        // Group stats by continuum
+        const statsByContinuum = {};
         stats.forEach(stat => {
-            const statCard = document.createElement('div');
-            statCard.className = 'stat-card';
+            const mapping = questionContinuumMap[stat.question_key];
+            if (mapping && mapping.continuum) {
+                if (!statsByContinuum[mapping.continuum]) {
+                    statsByContinuum[mapping.continuum] = [];
+                }
+                statsByContinuum[mapping.continuum].push(stat);
+            }
+        });
+        
+        // Create stat cards for each continuum
+        Object.keys(statsByContinuum).forEach(continuumKey => {
+            const continuumStats = statsByContinuum[continuumKey];
+            const continuumContainer = document.createElement('div');
+            continuumContainer.className = 'continuum-stats-container';
+            continuumContainer.setAttribute('data-continuum', continuumKey);
             
-            const heading = document.createElement('h4');
-            heading.textContent = stat.question_key;
+            continuumStats.forEach(stat => {
+                const statCard = document.createElement('div');
+                statCard.className = 'stat-card';
+                
+                const heading = document.createElement('h4');
+                heading.textContent = stat.question_key;
+                
+                const avgP = document.createElement('p');
+                avgP.textContent = `Average: ${stat.average.toFixed(2)}`;
+                
+                const stdDevP = document.createElement('p');
+                stdDevP.textContent = `Std Dev: ${stat.stdDev.toFixed(2)}`;
+                
+                const dontUnderstandP = document.createElement('p');
+                dontUnderstandP.textContent = `Don't Understand: ${stat.dontUnderstandPercentage.toFixed(1)}%`;
+                
+                // Append all elements to card
+                statCard.appendChild(heading);
+                statCard.appendChild(avgP);
+                statCard.appendChild(stdDevP);
+                statCard.appendChild(dontUnderstandP);
+                
+                // Add card to continuum container
+                continuumContainer.appendChild(statCard);
+            });
             
-            const avgP = document.createElement('p');
-            avgP.textContent = `Average: ${stat.average.toFixed(2)}`;
-            
-            const stdDevP = document.createElement('p');
-            stdDevP.textContent = `Std Dev: ${stat.stdDev.toFixed(2)}`;
-            
-            const dontUnderstandP = document.createElement('p');
-            dontUnderstandP.textContent = `Don't Understand: ${stat.dontUnderstandPercentage.toFixed(1)}%`;
-            
-            const detailsBtn = document.createElement('button');
-            detailsBtn.className = 'btn small details-btn';
-            detailsBtn.textContent = 'Details';
-            detailsBtn.setAttribute('data-question', stat.question_key);
-            
-            // Add direct click handler
-            detailsBtn.onclick = function() {
-                showContinuumDetails(stat.question_key);
-            };
-            
-            // Append all elements to card
-            statCard.appendChild(heading);
-            statCard.appendChild(avgP);
-            statCard.appendChild(stdDevP);
-            statCard.appendChild(dontUnderstandP);
-            statCard.appendChild(detailsBtn);
-            
-            // Add card to container
-            statCardsContainer.appendChild(statCard);
+            statCardsContainer.appendChild(continuumContainer);
         });
         
         detailedStatsContainer.appendChild(statCardsContainer);
@@ -1288,7 +1306,7 @@ function createContinuumVisual(continuum, continuumKey) {
         // Show detailed stats for this continuum
         const detailedStats = continuum.details;
         if (detailedStats && detailedStats.length > 0) {
-            showContinuumDetails(detailedStats[0].question_key); // Show details for first question in this continuum
+            showContinuumDetails(detailedStats[0].question_key, allResponses);
         }
     });
     
@@ -1478,7 +1496,7 @@ async function loadStudentResults(participantId) {
     }
 }
 
-function showContinuumDetails(questionKey) {
+function showContinuumDetails(questionKey, responses = allResponses) {
     // Show detailed view for a specific continuum/question
     
     // Make sure the elements exist
@@ -1492,12 +1510,47 @@ function showContinuumDetails(questionKey) {
         return;
     }
     
-    // Force element to be shown with important styles
+    // Get the continuum key from the question key
+    const surveyData = currentSurveys[selectedCohorts[0]];
+    const surveyConfig = surveyData?.json_config || {};
+    const statements = surveyConfig.statements || [];
+    
+    // Find the continuum for this question
+    const statement = statements.find(s => s.id === questionKey);
+    if (!statement || !statement.continuum) {
+        console.error('Could not find continuum for question:', questionKey);
+        return;
+    }
+    
+    const continuumKey = statement.continuum;
+    
+    // Show the detailed stats container
+    const detailedStats = document.getElementById('detailed-stats');
+    if (detailedStats) {
+        detailedStats.classList.remove('hidden');
+        
+        // Hide all continuum containers
+        const continuumContainers = detailedStats.querySelectorAll('.continuum-stats-container');
+        continuumContainers.forEach(container => {
+            container.classList.add('hidden');
+        });
+        
+        // Show only the selected continuum's container
+        const selectedContainer = detailedStats.querySelector(`.continuum-stats-container[data-continuum="${continuumKey}"]`);
+        if (selectedContainer) {
+            selectedContainer.classList.remove('hidden');
+        }
+        
+        // Scroll the details into view
+        detailedStats.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+    
+    // Also show the continuum details panel with the distribution
     continuumDetails.classList.remove('hidden');
-    continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important;';
+    continuumDetails.style.cssText = 'display: block !important; visibility: visible !important; opacity: 1 !important; position: relative !important; z-index: 100 !important;';
     
     // Prepare to load the data for this specific question
-    const questionResponses = allResponses.filter(r => r.question_key === questionKey);
+    const questionResponses = responses.filter(r => r.question_key === questionKey);
     
     // Clear existing content
     continuumStats.innerHTML = '';
@@ -1664,6 +1717,39 @@ function showContinuumDetails(questionKey) {
             .response-summary {
                 margin-top: 20px;
             }
+            .stat-cards-container {
+                display: grid;
+                grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                gap: 20px;
+                padding: 20px;
+            }
+            .stat-card {
+                background: white;
+                border-radius: 8px;
+                padding: 15px;
+                box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                transition: transform 0.2s ease;
+            }
+            .stat-card:hover {
+                transform: translateY(-2px);
+                box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+            }
+            .stat-card h4 {
+                margin: 0 0 10px 0;
+                color: #333;
+                font-size: 1.1em;
+            }
+            .stat-card p {
+                margin: 5px 0;
+                color: #666;
+                font-size: 0.9em;
+            }
+            .continuum-stats-container {
+                display: contents;
+            }
+            .continuum-stats-container.hidden {
+                display: none;
+            }
         `;
         document.head.appendChild(style);
     }
@@ -1683,15 +1769,17 @@ function showContinuumDetails(questionKey) {
 function hideDetails() {
     console.log('hideDetails called');
     
-    // Ensure we get the latest DOM reference
+    // Hide the continuum details panel
     const continuumDetails = document.querySelector('.continuum-details');
-    
     if (continuumDetails) {
-        console.log('Found continuumDetails element, hiding it');
-        continuumDetails.style.cssText = 'display: none !important;';
         continuumDetails.classList.add('hidden');
-    } else {
-        console.error('continuumDetails element not found in hideDetails function');
+        continuumDetails.style.cssText = 'display: none !important;';
+    }
+    
+    // Hide the detailed stats container
+    const detailedStats = document.getElementById('detailed-stats');
+    if (detailedStats) {
+        detailedStats.classList.add('hidden');
     }
 }
 

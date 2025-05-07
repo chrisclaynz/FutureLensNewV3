@@ -21,17 +21,20 @@
     "fix:search-path:minimal": "node scripts/fix-search-path-minimal.js",
     "fix:search-path:enhanced": "node scripts/fix-search-path-enhanced.js",
     "fix:search-path:rollback": "node scripts/rollback-function-changes.js",
-    "fix:search-path:redesign": "node scripts/apply-functional-redesign.js"
+    "fix:search-path:redesign": "node scripts/apply-functional-redesign.js",
+    "backup": "node scripts/backup-database.js",
+    "restore": "node scripts/restore-database.js",
+    "restore:table": "node scripts/restore-database.js"
   },
   "devDependencies": {
     "@babel/core": "^7.26.10",
     "@babel/plugin-transform-modules-commonjs": "^7.26.3",
     "@babel/preset-env": "^7.26.9",
     "@jest/globals": "^29.7.0",
-    "@supabase/supabase-js": "^2.39.3",
+    "@supabase/supabase-js": "^2.49.4",
     "babel-jest": "^29.7.0",
     "babel-plugin-transform-define": "^2.1.4",
-    "dotenv": "^16.4.1",
+    "dotenv": "^16.5.0",
     "identity-obj-proxy": "^3.0.0",
     "jest": "^29.7.0",
     "jest-environment-jsdom": "^29.7.0",
