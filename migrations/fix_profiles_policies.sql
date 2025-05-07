@@ -1,16 +1,19 @@
 -- Fix for infinite recursion in profiles table policies
 
--- Drop the problematic policies
+-- First, drop all existing policies to start fresh
+DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can view all profiles" ON public.profiles;
 DROP POLICY IF EXISTS "Admins can update all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Admin access all profiles" ON public.profiles;
+DROP POLICY IF EXISTS "Teachers can view participants in their cohorts" ON public.participants;
 
 -- Create simplified policies that don't cause recursion
 -- Everyone can view their own profile (basic self-access)
 CREATE POLICY "Users can view their own profile"
 ON public.profiles
 FOR SELECT
-USING (auth.uid() = id)
-WITH CHECK (auth.uid() = id);
+USING (auth.uid() = id);
 
 -- Everyone can update their own profile (basic self-access)
 CREATE POLICY "Users can update their own profile"
@@ -27,12 +30,11 @@ USING (
   EXISTS (
     SELECT 1 FROM auth.users
     WHERE auth.users.id = auth.uid()
-    AND (auth.users.raw_user_meta_data->>'is_admin')::boolean = true
+    AND (auth.users.raw_user_meta_data->>'role')::text = 'admin'
   )
 );
 
 -- Update the teacher access policies to use direct auth checks
-DROP POLICY IF EXISTS "Teachers can view participants in their cohorts" ON public.participants;
 CREATE POLICY "Teachers can view participants in their cohorts"
 ON public.participants
 FOR SELECT
@@ -42,7 +44,7 @@ USING (
             SELECT 1 
             FROM auth.users
             WHERE auth.users.id = auth.uid()
-            AND auth.users.raw_user_meta_data->>'role' = 'teacher'
+            AND (auth.users.raw_user_meta_data->>'role')::text = 'teacher'
         )
         AND
         EXISTS (

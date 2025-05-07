@@ -35,6 +35,7 @@ export const auth = {
         const password = event.target.elements.password.value;
         
         try {
+            console.log('Attempting login for:', email);
             const { data, error } = await supabase.auth.signInWithPassword({
                 email,
                 password
@@ -43,11 +44,13 @@ export const auth = {
             if (error) throw error;
 
             if (data?.user) {
+                console.log('Login successful, user:', data.user.id);
                 // Store session info
                 localStorage.setItem('participant_id', data.user.id);
                 
                 // Check user role to determine where to redirect
                 try {
+                    console.log('Fetching user profile...');
                     const { data: profile, error: profileError } = await supabase
                         .from('profiles')
                         .select('role')
@@ -61,11 +64,14 @@ export const auth = {
                         return;
                     }
                     
+                    console.log('User profile:', profile);
+                    
                     // Redirect based on role
                     if (profile && (profile.role === 'teacher' || profile.role === 'admin')) {
                         console.log('User has teacher/admin role, redirecting to admin dashboard');
                         window.location.href = '/admin.html';
                     } else {
+                        console.log('User has student role, redirecting to survey code page');
                         // Continue with normal student flow
                         window.location.href = '/survey-code.html';
                     }

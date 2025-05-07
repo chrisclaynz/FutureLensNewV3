@@ -38,12 +38,16 @@ export function createApp(dependencies = {}) {
 
     async function handleDOMContentLoaded() {
         try {
+            console.log('DOMContentLoaded handler started');
             // Check what page we're on
             const isAuthPage = win.location.pathname.includes('index.html') || 
                                win.location.pathname === '/';
             const isSurveyCodePage = win.location.pathname.includes('survey-code.html');
             const isWelcomePage = win.location.pathname.includes('survey-welcome.html');
             const isResultsPage = win.location.pathname.includes('results.html');
+            const isAdminPage = win.location.pathname.includes('admin.html');
+            
+            console.log('Current page:', win.location.pathname);
             
             // Get the current session
             const { data: { session }, error } = await supabaseClient.auth.getSession();
@@ -52,24 +56,54 @@ export function createApp(dependencies = {}) {
             
             // Handle authentication flow
             if (!session && !isAuthPage) {
+                console.log('No session and not on auth page, redirecting to login');
                 // If not logged in and not on auth page, redirect to auth page
                 win.location.href = '/';
                 return;
-            } else if (session && isAuthPage) {
-                // If logged in and on auth page, redirect to survey code page
-                // Store user ID in localStorage for the survey
-                if (session.user) {
-                    storage.setItem('participant_id', session.user.id);
+            } else if (session) {
+                // If logged in, check user role
+                const { data: profile, error: profileError } = await supabaseClient
+                    .from('profiles')
+                    .select('role')
+                    .eq('id', session.user.id)
+                    .single();
+                
+                if (profileError) {
+                    console.error('Error fetching user profile:', profileError);
+                    // Default to student flow if profile fetch fails
+                    if (isAuthPage) {
+                        win.location.href = '/survey-code.html';
+                    }
+                    return;
                 }
-                win.location.href = '/survey-code.html';
-                return;
+                
+                // Handle redirects based on role and current page
+                if (profile.role === 'teacher' || profile.role === 'admin') {
+                    if (isAuthPage || isSurveyCodePage || isWelcomePage) {
+                        // Teachers/admins should go to admin dashboard
+                        win.location.href = '/admin.html';
+                        return;
+                    }
+                } else {
+                    // Regular users (students)
+                    if (isAuthPage) {
+                        // Store user ID in localStorage for the survey
+                        if (session.user) {
+                            storage.setItem('participant_id', session.user.id);
+                        }
+                        win.location.href = '/survey-code.html';
+                        return;
+                    }
+                }
             }
             
             // If logged in and on survey welcome or survey page, check for survey_id
             if (session && (isSurveyPage || isWelcomePage)) {
+                console.log('Checking survey_id for survey/welcome page');
                 const hasSurveyId = storage.getItem('survey_id');
                 
                 if (!hasSurveyId) {
+                    console.log('No survey_id found, redirecting to survey code page');
                     // If on survey page but no survey ID, redirect to survey code page
                     win.location.href = '/survey-code.html';
                     return;
@@ -78,6 +112,7 @@ export function createApp(dependencies = {}) {
             
             // Initialize survey if on survey page
             if (isSurveyPage && session && createSurvey) {
+                console.log('Initializing survey');
                 // Store user ID in localStorage for the survey if not already there
                 if (session.user && !storage.getItem('participant_id')) {
                     storage.setItem('participant_id', session.user.id);
