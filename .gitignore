@@ -27,3 +27,8 @@ yarn-error.log*
 dist/
 build/
 dist1/ *.csv
+
+# Backup files
+backups/
+*.csv
+*.zip
