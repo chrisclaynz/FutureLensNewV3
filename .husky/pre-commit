@@ -1,0 +1,5 @@
+#!/bin/sh
+. "$(dirname "$0")/_/husky.sh"
+
+# Run the credentials check script
+node ./scripts/check-credentials.cjs 
