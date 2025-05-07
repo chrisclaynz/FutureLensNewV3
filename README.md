@@ -11,6 +11,7 @@ A Vanilla JS project for survey management with Supabase backend.
 - Offline data collection with single final submission
 - Results visualization with score analysis
 - 60-minute session timeout for security
+- Database backup and restore functionality
 
 ## Tech Stack
 
@@ -58,6 +59,7 @@ A Vanilla JS project for survey management with Supabase backend.
    ```
    SUPABASE_URL=your_supabase_url
    SUPABASE_ANON_KEY=your_supabase_anon_key
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
    ```
 4. Update `src/config.js` to use these environment variables.
 
@@ -127,6 +129,67 @@ This will execute Jest tests located in the `test/` directory.
    ```
 
 3. Open http://localhost:3000 in your browser
+
+## Database Backup and Restore
+
+The project includes scripts for backing up and restoring your Supabase database. These scripts create CSV backups of all tables and provide functionality to restore the data if needed.
+
+### Prerequisites
+- Node.js and npm installed
+- Supabase project with service role key
+
+### Environment Setup
+1. Create a `.env` file in the root directory with your Supabase credentials:
+   ```
+   SUPABASE_URL=your_supabase_url
+   SUPABASE_SERVICE_ROLE_KEY=your_service_role_key
+   ```
+   Note: The service role key is required for backup/restore operations.
+
+### Creating a Backup
+To create a backup of all database tables:
+```bash
+npm run backup
+```
+This will:
+- Create a `backups` directory if it doesn't exist
+- Export each table to a separate CSV file
+- Name files with timestamps (e.g., `profiles_backup_2024-03-21T12-34-56.csv`)
+- Handle special characters and formatting in the CSV files
+
+The backup files are stored in the `backups` directory and are excluded from git for security.
+
+### Restoring from Backup
+To restore all tables from their most recent backups:
+```bash
+npm run restore
+```
+
+To restore a specific backup file:
+```bash
+npm run restore:table backups/profiles_backup_2024-03-21T12-34-56.csv
+```
+
+The restore process:
+- Reads the backup CSV files
+- Validates the data
+- Restores tables in the correct order
+- Provides progress updates
+- Handles errors gracefully
+
+### Backup Files
+The backup process creates CSV files for the following tables:
+- profiles
+- participants
+- surveys
+- responses
+- cohorts
+
+### Security Notes
+- Backup files contain sensitive data and are excluded from git
+- Keep your service role key secure
+- Store backup files in a secure location
+- Consider encrypting backup files for additional security
 
 ## License
 
